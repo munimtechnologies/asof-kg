@@ -136,5 +136,5 @@ CSTE adopts a case definition in one year and CDC uses it from the next surveill
 Issues and corrections are welcome.
 
 ## License, credits and contact
-- Code: MIT. Data, ontology and documentation: CC BY 4.0.
+- Code: Apache-2.0. Data, ontology and documentation: CC BY 4.0.
 - Made by MV2 of Munim, Inc. The work was done with AI agents (Claude) working in his name, and every date was checked against the cited FDA, CDC or PubMed record. Contact: munimversion2@gmail.com.
