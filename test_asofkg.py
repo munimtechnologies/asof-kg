@@ -1,24 +1,28 @@
+import collections
 import contextlib
 import datetime as dt
 import io
 import os
 import sys
+import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from asofkg import (GuidelineKG, GuidelineVersion, Instant, Version, VersionChains, allen, audit,  # noqa: E402
-                    boxed_warning, check_copy, evidence_lag, guideline_points, label_audit,
-                    load_case_definitions, load_encounters, load_fills, load_labels, summarize, to_turtle,
-                    version_points, versions_to_turtle, yearly)
+                    boxed_warning, check_copy, evidence_lag, fact_spans, guideline_points, label_audit,
+                    load_case_definitions, load_encounters, load_fills, load_labels, summarize, to_kgx,
+                    to_turtle, version_points, versions_to_turtle, write_kgx, yearly)
 from asofkg.__main__ import main  # noqa: E402
+from asofkg.kgx import EDGE_COLUMNS, NODE_COLUMNS  # noqa: E402
 
 CRC = "colorectal-cancer-screening"
 BREAST = "breast-cancer-screening"
 ASPIRIN = "aspirin-primary-prevention-cvd"
 LYME = "lyme-disease"
 NEURO = ["serious neuropsychiatric events"]
+AKG = "@prefix akg: <https://github.com/munimtechnologies/asof-kg/ontology#> ."
 D = dt.date
 
 
@@ -205,6 +209,10 @@ class CheckTests(unittest.TestCase):
                                 chain_version("c", "2012-01-01", supersedes="a")])
         self.assertIn("branches", "\n".join(chains.check()))
 
+    def test_flags_terms_no_version_uses(self):
+        chains = VersionChains([chain_version("a", "2010-01-01")], terms={"x": []})
+        self.assertEqual(chains.check(), ["terms given for 'x', which no version uses"])
+
 
 class LabelTests(unittest.TestCase):
     @classmethod
@@ -215,6 +223,7 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(self.labels.check(), [])
         self.assertEqual(self.labels.subjects(),
                          ["febuxostat", "levofloxacin", "montelukast", "tofacitinib", "varenicline"])
+        self.assertEqual(len(self.labels.terms), 6)
 
     def test_boxed_warning_history(self):
         box = lambda drug, on, known_at=None: boxed_warning(self.labels, drug, on, known_at)  # noqa: E731
@@ -317,6 +326,47 @@ class LabelTests(unittest.TestCase):
                          {"expected": "montelukast-2020", "consistent": True, "older": []})
 
 
+class RiskSpanTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.labels = load_labels()
+
+    def spans(self, known_at=None, view="public"):
+        return {(s["subject"], s["value"]): s for s in fact_spans(self.labels, "boxed_warning", known_at, view)}
+
+    def test_all_spans(self):
+        spans = self.spans()
+        self.assertEqual(len(spans), 13)
+        self.assertEqual([k for k, s in spans.items() if s["end"] is not None], [("varenicline", NEURO[0])])
+        levo = [s["value"] for s in fact_spans(self.labels, "boxed_warning") if s["subject"] == "levofloxacin"]
+        self.assertEqual(levo, ["tendinitis and tendon rupture", "exacerbation of myasthenia gravis",
+                                "disabling and potentially irreversible serious adverse reactions",
+                                "peripheral neuropathy", "central nervous system effects"])
+
+    def test_removed_risk(self):
+        s = self.spans()[("varenicline", NEURO[0])]
+        self.assertEqual((s["start"], s["end"]), (D(2009, 7, 1), D(2016, 12, 16)))
+        self.assertEqual((s["started_by"], s["ended_by"]), ("varenicline-2009", "varenicline-2016"))
+        self.assertEqual((s["start_known_from"], s["end_known_from"]), (D(2009, 7, 1), D(2016, 12, 16)))
+        self.assertEqual(self.spans(view="sponsor")[("varenicline", NEURO[0])]["start_known_from"], D(2009, 2, 19))
+        # Before the removal was known, the span is open.
+        self.assertIsNone(self.spans("2016-06-01")[("varenicline", NEURO[0])]["end"])
+
+    def test_known_before_and_after_it_took_effect(self):
+        mont = self.spans()[("montelukast", NEURO[0])]
+        self.assertEqual((mont["start"], mont["start_known_from"]), (D(2020, 4, 29), D(2020, 3, 4)))
+        self.assertNotIn(("montelukast", NEURO[0]), self.spans("2020-03-01"))
+        self.assertEqual(self.spans("2020-03-10")[("montelukast", NEURO[0])]["start"], D(2020, 4, 29))
+        clot = self.spans()[("tofacitinib", "thrombosis")]
+        self.assertEqual((clot["start"], clot["start_known_from"]), (D(2019, 7, 25), D(2019, 7, 26)))
+
+    def test_who_knew_first(self):
+        for view, before, after in (("public", 6, 2), ("sponsor", 10, 0)):
+            spans = fact_spans(self.labels, "boxed_warning", None, view)
+            self.assertEqual(sum(1 for s in spans if s["start_known_from"] < s["start"]), before)
+            self.assertEqual(sum(1 for s in spans if s["start_known_from"] > s["start"]), after)
+
+
 class CaseDefinitionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -406,6 +456,95 @@ class MetricsTests(unittest.TestCase):
         self.assertEqual(rows["tofacitinib-2021"]["signal_lag_days"], 301)
 
 
+class KgxTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.kg = GuidelineKG.load()
+        cls.labels = load_labels()
+        cls.cd = load_case_definitions()
+
+    def graph(self, known_at=None, view="public"):
+        nodes, edges = to_kgx(self.kg, self.labels, self.cd, known_at, view)
+        return {n["id"]: n for n in nodes}, {e["id"]: e for e in edges}, nodes, edges
+
+    def test_full_graph(self):
+        nodes, edges, node_list, edge_list = self.graph()
+        self.assertEqual((len(node_list), len(edge_list)), (46, 56))
+        self.assertEqual((len(nodes), len(edges)), (46, 56))  # ids are unique
+        self.assertEqual(collections.Counter(n["category"] for n in node_list),
+                         {"biolink:Publication": 11, "biolink:InformationContentEntity": 17, "biolink:Drug": 6,
+                          "biolink:Disease": 4, "biolink:Procedure": 1, "biolink:DiseaseOrPhenotypicFeature": 7})
+        self.assertEqual(collections.Counter(e["predicate"] for e in edge_list),
+                         {"biolink:mentions": 30, "biolink:related_to_at_instance_level": 19,
+                          "biolink:has_adverse_event": 7})
+        for e in edge_list:
+            self.assertIn(e["subject"], nodes)
+            self.assertIn(e["object"], nodes)
+            self.assertEqual((e["knowledge_level"], e["agent_type"]), ("knowledge_assertion", "manual_agent"))
+
+    def test_versions_and_links(self):
+        nodes, edges, _, _ = self.graph()
+        self.assertEqual(nodes["akgd:crc-2016"]["xref"], "PMID:27304597")
+        self.assertEqual((nodes["akgd:crc-2016"]["valid_from"], nodes["akgd:crc-2016"]["valid_to"]),
+                         ("2016-06-21", "2021-05-18"))
+        vare = nodes["akgd:varenicline-2009"]
+        self.assertEqual((vare["category"], vare["valid_from"], vare["valid_to"], vare["known_from"]),
+                         ("biolink:InformationContentEntity", "2009-07-01", "2016-12-16", "2009-07-01"))
+        self.assertEqual(edges["akgd:crc-2021-revises-crc-2016"]["original_predicate"], "prov:wasRevisionOf")
+        trial = edges["akgd:febuxostat-2019-evidence-29527974"]
+        self.assertEqual((trial["object"], trial["original_predicate"]), ("PMID:29527974", "prov:wasInfluencedBy"))
+        self.assertEqual(edges["akgd:lyme-2022-mentions-D008193"]["object"], "MESH:D008193")
+        self.assertEqual(nodes["MESH:D008327"]["category"], "biolink:Procedure")
+
+    def test_adverse_event_edges(self):
+        _, edges, _, _ = self.graph()
+        # 4 levofloxacin (tendon risk maps to two MeSH terms) and 3 tofacitinib; the other risks are unmapped.
+        self.assertEqual({k for k, e in edges.items() if e["predicate"] == "biolink:has_adverse_event"},
+                         {"akgd:levofloxacin-ae-D052256-2008-10-03", "akgd:levofloxacin-ae-D013708-2008-10-03",
+                          "akgd:levofloxacin-ae-D009157-2011-02-25", "akgd:levofloxacin-ae-D010523-2016-07-26",
+                          "akgd:tofacitinib-ae-D007239-2012-11-06", "akgd:tofacitinib-ae-D009369-2012-11-06",
+                          "akgd:tofacitinib-ae-D013927-2019-07-25"})
+        clot = edges["akgd:tofacitinib-ae-D013927-2019-07-25"]
+        self.assertEqual((clot["subject"], clot["predicate"], clot["object"]),
+                         ("RXNORM:1357536", "biolink:has_adverse_event", "MESH:D013927"))
+        self.assertEqual((clot["valid_from"], clot["valid_to"], clot["known_from"]), ("2019-07-25", "", "2019-07-26"))
+        self.assertEqual(clot["description"], "boxed warning: thrombosis")
+        self.assertEqual(edges["akgd:levofloxacin-ae-D013708-2008-10-03"]["known_from"], "2008-07-08")
+        _, sponsor, _, _ = self.graph(view="sponsor")
+        self.assertEqual(sponsor["akgd:tofacitinib-ae-D013927-2019-07-25"]["known_from"], "2019-05-09")
+
+    def test_snapshot(self):
+        nodes, edges, node_list, edge_list = self.graph("2018-01-01")
+        self.assertEqual((len(node_list), len(edge_list)), (35, 35))
+        self.assertNotIn("akgd:crc-2021", nodes)
+        self.assertNotIn("MESH:D013927", nodes)
+        self.assertNotIn("PMID:29527974", nodes)
+        self.assertEqual(nodes["akgd:crc-2016"]["valid_to"], "")
+        for e in edge_list:
+            self.assertIn(e["subject"], nodes)
+            self.assertIn(e["object"], nodes)
+        # Announced on 2020-03-04, so by 2020-03-10 the old label's end is known ahead of time.
+        nodes, _, _, _ = self.graph("2020-03-10")
+        self.assertEqual(nodes["akgd:montelukast-1998"]["valid_to"], "2020-04-29")
+        nodes, _, _, _ = self.graph("2009-03-01", view="sponsor")
+        self.assertEqual((nodes["akgd:varenicline-2009"]["valid_from"], nodes["akgd:varenicline-2009"]["known_from"]),
+                         ("2009-07-01", "2009-02-19"))
+
+    def test_write_tsv(self):
+        nodes, edges = to_kgx(self.kg, self.labels, self.cd)
+        with tempfile.TemporaryDirectory() as tmp:
+            node_path, edge_path = write_kgx(nodes, edges, os.path.join(tmp, "out"))
+            with open(node_path, encoding="utf-8") as f:
+                node_lines = f.read().splitlines()
+            with open(edge_path, encoding="utf-8") as f:
+                edge_lines = f.read().splitlines()
+        self.assertEqual(node_lines[0], "\t".join(NODE_COLUMNS))
+        self.assertEqual(edge_lines[0], "\t".join(EDGE_COLUMNS))
+        self.assertEqual((len(node_lines), len(edge_lines)), (47, 57))
+        self.assertTrue(all(len(line.split("\t")) == len(NODE_COLUMNS) for line in node_lines))
+        self.assertTrue(all(len(line.split("\t")) == len(EDGE_COLUMNS) for line in edge_lines))
+
+
 class TurtleTests(unittest.TestCase):
     def test_snapshot_hides_later_versions(self):
         kg = GuidelineKG.load()
@@ -466,7 +605,7 @@ class TurtleTests(unittest.TestCase):
         with open(os.path.join(HERE, "ontology", "asofkg.ttl"), encoding="utf-8") as f:
             text = f.read()
         self.assertIn("owl:Ontology", text)
-        self.assertIn('owl:versionInfo "0.3.0"', text)
+        self.assertIn('owl:versionInfo "0.4.0"', text)
         for term in ("akg:supersedes", "akg:inForceDuring", "akg:validDuring", "akg:Recommendation",
                      "akg:Version", "akg:LabelVersion", "akg:CaseDefinitionVersion",
                      "akg:effectiveFrom", "akg:announcedOn", "akg:notifiedOn", "akg:boxedWarningRisk",
@@ -478,6 +617,16 @@ class TurtleTests(unittest.TestCase):
             text = f.read()
         for shape in ("akg:GuidelineVersionShape", "akg:EffectiveVersionShape", "akg:RecommendationShape"):
             self.assertIn(shape + " a sh:NodeShape", text)
+
+    def test_one_namespace_everywhere(self):
+        # The ontology, the shapes and the instance data must use the same akg: namespace.
+        for path in (("ontology", "asofkg.ttl"), ("shapes", "asofkg-shapes.ttl")):
+            with open(os.path.join(HERE, *path), encoding="utf-8") as f:
+                text = f.read()
+            self.assertIn(AKG, text)
+            self.assertNotIn("github.com/munimv2/", text)
+        self.assertIn(AKG, to_turtle(GuidelineKG.load()))
+        self.assertIn(AKG, versions_to_turtle(load_labels()))
 
 
 class CliTests(unittest.TestCase):
@@ -527,6 +676,14 @@ class CliTests(unittest.TestCase):
         code, out = self.run_main("ttl", "--known-at", "2009-03-01", "--view", "sponsor")
         self.assertEqual(code, 0)
         self.assertIn("akg:notifiedOn", out)
+
+    def test_kgx(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = self.run_main("kgx", "--out", tmp)
+            self.assertTrue(os.path.exists(os.path.join(tmp, "nodes.tsv")))
+        self.assertEqual(code, 0)
+        self.assertIn("46 nodes -> ", out)
+        self.assertIn("56 edges -> ", out)
 
 
 if __name__ == "__main__":

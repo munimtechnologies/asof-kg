@@ -2,7 +2,7 @@
   "about": "Successive CDC/CSTE surveillance case definitions for Lyme disease, as versions. Each version is named by CDC for the year it is used from; 'effective' is January 1 of that year (surveillance years follow MMWR weeks, which start within a few days of January 1). 'announced' is when CSTE adopted the position statement behind it; only the year can be read from the statement number, so it is given as a year and counts as known only once that year has ended, except where CDC gives a season. Versions before 2011 (1995, 1996, 2008) exist but are not in this graph yet. Checked on 2026-10-14 against CDC's NNDSS case definition pages. Research data, not medical advice.",
   "kind": "CaseDefinitionVersion",
   "subjects": {
-    "lyme-disease": {"label": "Lyme disease (Borrelia burgdorferi)", "condition": "MESH:D008193"}
+    "lyme-disease": {"label": "Lyme disease (Borrelia burgdorferi)", "condition": "MESH:D008193", "condition_label": "Lyme Disease"}
   },
   "versions": [
     {

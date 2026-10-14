@@ -2,8 +2,8 @@
 # published by ?knownAt? Set ?knownAt = ?on for "what a clinician could know
 # that day", or a later date for an audit. Versions published after ?knownAt
 # are invisible, so the answer never uses hindsight.
-PREFIX akg: <https://github.com/munimv2/asof-kg/ontology#>
-PREFIX akgd: <https://github.com/munimv2/asof-kg/data#>
+PREFIX akg: <https://github.com/munimtechnologies/asof-kg/ontology#>
+PREFIX akgd: <https://github.com/munimtechnologies/asof-kg/data#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 SELECT ?version ?published WHERE {

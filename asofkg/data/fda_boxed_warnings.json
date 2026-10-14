@@ -1,5 +1,5 @@
 {
-  "about": "Boxed-warning history of five US drug labels, as versions. 'effective' is the date FDA approved the labeling change (the approval letter says it is effective on the letter's date). 'notified' is the date of FDA's letter to the sponsor under FDCA section 505(o)(4), known then only to FDA and the sponsor; it is taken from the later approval letter. 'announced' is the first public date (FDA announcement or news release); when absent, the change is treated as public from its approval. Each first version is the original approval. 'evidence_first_public' is when the trial report behind a change first appeared in a journal (PubMed); 'signal_first_public' is FDA's first public notice of the safety signal. Dates and wording were checked on 2026-10-14 against FDA approval letters and labels on Drugs@FDA (accessdata.fda.gov), current labels in openFDA, and PubMed. Only boxed warnings are tracked here, not other label sections. Research data, not medical advice.",
+  "about": "Boxed-warning history of five US drug labels, as versions. 'effective' is the date FDA approved the labeling change (the approval letter says it is effective on the letter's date). 'notified' is the date of FDA's letter to the sponsor under FDCA section 505(o)(4), known then only to FDA and the sponsor; it is taken from the later approval letter. 'announced' is the first public date (FDA announcement or news release); when absent, the change is treated as public from its approval. Each first version is the original approval. 'evidence_first_public' is when the trial report behind a change first appeared in a journal (PubMed); 'signal_first_public' is FDA's first public notice of the safety signal. Dates and wording were checked on 2026-10-14 against FDA approval letters and labels on Drugs@FDA (accessdata.fda.gov), current labels in openFDA, and PubMed. Only boxed warnings are tracked here, not other label sections. 'terms' maps a boxed-warning risk to MeSH descriptors (checked with the NLM MeSH lookup service on 2026-10-14); risks with no close MeSH descriptor, such as 'mortality', are left unmapped rather than forced. Research data, not medical advice.",
   "kind": "LabelVersion",
   "subjects": {
     "levofloxacin": {"label": "levofloxacin (Levaquin, NDA 020634)", "rxcui": "82122"},
@@ -7,6 +7,15 @@
     "montelukast": {"label": "montelukast (Singulair, NDA 020829)", "rxcui": "88249"},
     "febuxostat": {"label": "febuxostat (Uloric, NDA 021856)", "rxcui": "73689"},
     "tofacitinib": {"label": "tofacitinib (Xeljanz, NDA 203214)", "rxcui": "1357536"}
+  },
+  "terms": {
+    "tendinitis and tendon rupture": [{"id": "MESH:D052256", "label": "Tendinopathy"},
+                                      {"id": "MESH:D013708", "label": "Tendon Injuries"}],
+    "exacerbation of myasthenia gravis": [{"id": "MESH:D009157", "label": "Myasthenia Gravis"}],
+    "peripheral neuropathy": [{"id": "MESH:D010523", "label": "Peripheral Nervous System Diseases"}],
+    "serious infections": [{"id": "MESH:D007239", "label": "Infections"}],
+    "malignancy": [{"id": "MESH:D009369", "label": "Neoplasms"}],
+    "thrombosis": [{"id": "MESH:D013927", "label": "Thrombosis"}]
   },
   "versions": [
     {

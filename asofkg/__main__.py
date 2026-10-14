@@ -1,4 +1,4 @@
-"""Command line: python -m asofkg {demo,labels,metrics,check,ttl} [--known-at YYYY-MM-DD] [--view public|sponsor]"""
+"""Command line: python -m asofkg {demo,labels,metrics,check,ttl,kgx} [--known-at YYYY-MM-DD] [--view public|sponsor] [--out DIR]"""
 
 import argparse
 import datetime as dt
@@ -6,6 +6,7 @@ import sys
 
 from .instants import as_date
 from .kg import GuidelineKG, audit, load_encounters
+from .kgx import to_kgx, write_kgx
 from .metrics import evidence_lag, guideline_points, summarize, version_points, yearly
 from .rdf import to_turtle, versions_to_turtle
 from .versions import VIEWS, label_audit, load_case_definitions, load_fills, load_labels
@@ -43,15 +44,17 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="asofkg",
         description="Hindsight-free reasoning over guideline, drug-label and case-definition versions.")
-    parser.add_argument("command", choices=("demo", "labels", "metrics", "check", "ttl"),
+    parser.add_argument("command", choices=("demo", "labels", "metrics", "check", "ttl", "kgx"),
                         help="demo: synthetic care-gap audit; labels: synthetic boxed-warning audit; "
                              "metrics: how often a graph without time answers differently or uses later "
-                             "knowledge; check: consistency report; ttl: the graph as Turtle")
+                             "knowledge; check: consistency report; ttl: the graph as Turtle; "
+                             "kgx: the graph as KGX nodes.tsv and edges.tsv (Biolink)")
     parser.add_argument("--known-at", default=None,
                         help="evaluation date YYYY-MM-DD (demo, labels and metrics default: today; "
-                             "ttl default: everything)")
+                             "ttl and kgx default: everything)")
     parser.add_argument("--view", default="public", choices=VIEWS,
                         help="whose knowledge counts: the public, or the regulator and sponsor")
+    parser.add_argument("--out", default="kgx", help="kgx: directory to write the two files to (default: kgx)")
     args = parser.parse_args(argv)
     kg = GuidelineKG.load()
     labels = load_labels()
@@ -70,6 +73,13 @@ def main(argv=None):
         sys.stdout.write(versions_to_turtle(labels, args.known_at, args.view, prefixes=False))
         sys.stdout.write("\n")
         sys.stdout.write(versions_to_turtle(casedefs, args.known_at, args.view, prefixes=False))
+        return 0
+
+    if args.command == "kgx":
+        nodes, edges = to_kgx(kg, labels, casedefs, args.known_at, args.view)
+        node_path, edge_path = write_kgx(nodes, edges, args.out)
+        print("%d nodes -> %s" % (len(nodes), node_path))
+        print("%d edges -> %s" % (len(edges), edge_path))
         return 0
 
     known_at = args.known_at or dt.date.today().isoformat()

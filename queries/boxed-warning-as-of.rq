@@ -4,8 +4,8 @@
 # announced after that date; ?knownAt filters again so it also works on the
 # full graph. A row with no ?risk means the label in effect then had no
 # boxed warning; no rows means no label version was known.
-PREFIX akg: <https://github.com/munimv2/asof-kg/ontology#>
-PREFIX akgd: <https://github.com/munimv2/asof-kg/data#>
+PREFIX akg: <https://github.com/munimtechnologies/asof-kg/ontology#>
+PREFIX akgd: <https://github.com/munimtechnologies/asof-kg/data#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 SELECT ?version ?effective ?risk WHERE {

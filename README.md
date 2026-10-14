@@ -6,16 +6,16 @@ Most medical knowledge graphs store facts with no time attached. They cannot tel
 - **Knowledge time:** when it could first be known. The *end* of a version's time in force is known only once its successor is known.
 - **Whose knowledge:** the public, or the regulator and the product's sponsor, who often know of a required label change months before it is announced.
 
-Every query takes a `known_at` date and never uses anything known after it. Version 0.3.0, 2026-10-14.
+Every query takes a `known_at` date and never uses anything known after it. Version 0.4.0, 2026-10-14.
 
 > **Not medical advice.** This is research software and research data. It does not tell anyone what care to get or which medicine to take. Ask a clinician or pharmacist.
 
 ## What's in it
 | Path | What it is |
 |---|---|
-| `asofkg/` | Python 3.7+ package, standard library only: as-of queries, consistency checks, leakage metrics, Turtle export, CLI |
+| `asofkg/` | Python 3.7+ package, standard library only: as-of queries, consistency checks, leakage metrics, Turtle and KGX export, CLI |
 | `asofkg/data/uspstf.json` | Care pathways: 8 USPSTF recommendation statements on 3 topics (2008-2024), each with its PMID |
-| `asofkg/data/fda_boxed_warnings.json` | Pharmacovigilance: boxed-warning history of levofloxacin, varenicline, montelukast, febuxostat and tofacitinib (14 label versions, 1996-2021), each from FDA approval letters |
+| `asofkg/data/fda_boxed_warnings.json` | Pharmacovigilance: boxed-warning history of levofloxacin, varenicline, montelukast, febuxostat and tofacitinib (14 label versions, 1996-2021), each from FDA approval letters, with boxed-warning risks mapped to MeSH |
 | `asofkg/data/cdc_case_definitions.json` | Infectious-disease surveillance: CDC/CSTE Lyme disease case definitions 2011, 2017 and 2022 |
 | `asofkg/data/synthetic_*.json` | Made-up encounters and prescription fills for the demos (no real people) |
 | `ontology/asofkg.ttl` | OWL 2 ontology built on OWL-Time and PROV-O, aligned to Biolink, MeSH, PATO and RxNorm |
@@ -31,6 +31,8 @@ python -m asofkg metrics --known-at 2026-10-14  # how often a graph without time
 python -m asofkg check                          # consistency report for all three datasets
 python -m asofkg ttl --known-at 2018-01-01      # the graph as it could be known on that date
 python -m asofkg ttl --known-at 2009-03-01 --view sponsor   # ...as FDA and the sponsor knew it
+python -m asofkg kgx --out kgx                  # the graph as KGX nodes.tsv and edges.tsv (Biolink)
+python -m asofkg kgx --known-at 2018-01-01 --out kgx-2018   # ...as it could be known on that date
 python -m unittest test_asofkg                  # tests
 ```
 
@@ -60,6 +62,40 @@ Some label changes rest on a trial. asof-kg keeps when the trial report first ap
 | tofacitinib: MACE added (ORAL Surveillance) | 2021-12-02 | 2022-01-27, PMID 35081280 | **-56** (label first) | 2021-02-04 | 301 |
 
 So evidence can lead labels by most of a year, and labels can lead the journal article: a graph that orders knowledge by publication date alone would get the 2021 tofacitinib change wrong.
+
+### Who knew first: each risk's time in the boxed warning
+`fact_spans()` gives, for each drug and boxed-warning risk, when the risk entered the warning, when (if ever) it left, and when each could first be known. The 5 drugs have 13 such spans; one has ended (varenicline's neuropsychiatric warning, 2009-07-01 to 2016-12-16).
+
+| | Known before it took effect | Same day | Known only after it took effect |
+|---|---|---|---|
+| Public view | 6 | 5 | 2 (tofacitinib mortality and thrombosis, announced the day after) |
+| Sponsor view | 10 | 3 | 0 |
+
+So for 10 of 13 risks, FDA and the sponsor knew the warning was coming before it reached the label, and in 6 the public did too. A graph that records only the effective date cannot answer "what could a prescriber have known on this day?"
+
+## KGX export for Biolink and Translator tools
+`python -m asofkg kgx` writes the graph in [KGX](https://github.com/biolink/kgx) TSV form (`nodes.tsv`, `edges.tsv`, lists separated by `|`) with Biolink Model categories and predicates, so Translator-style tools can load it. The full graph has **46 nodes and 56 edges**:
+
+| Nodes | Category | Count |
+|---|---|---|
+| Guideline versions (xref to their PMID); trial reports | `biolink:Publication` | 8 + 3 |
+| Label and case-definition versions | `biolink:InformationContentEntity` | 14 + 3 |
+| Drugs (RxNorm ingredients) and aspirin (MeSH) | `biolink:Drug` | 5 + 1 |
+| Screened and surveilled conditions (MeSH) | `biolink:Disease` | 4 |
+| Mammography (MeSH) | `biolink:Procedure` | 1 |
+| Boxed-warning risks (MeSH) | `biolink:DiseaseOrPhenotypicFeature` | 7 |
+
+| Edges | Predicate | Count |
+|---|---|---|
+| A version mentions the drug, condition or procedure it is about | `biolink:mentions` | 30 |
+| A version revises the one it supersedes (`original_predicate` `prov:wasRevisionOf`); a label change rests on a trial (`prov:wasInfluencedBy`) | `biolink:related_to_at_instance_level` | 16 + 3 |
+| A drug's boxed warning names a risk, for one span of time: 4 for levofloxacin (the tendon risk maps to two MeSH terms), 3 for tofacitinib | `biolink:has_adverse_event` | 7 |
+
+Every edge has `knowledge_level` `knowledge_assertion` and `agent_type` `manual_agent` (dates and wording were curated by hand from the cited records). Biolink has no slots for valid and knowledge time, so the export adds them as columns: `valid_from` and `valid_to` (exclusive; empty while open), `known_from`, and on edges `valid_to_known_from`. For example, the tofacitinib thrombosis edge (`RXNORM:1357536` `biolink:has_adverse_event` `MESH:D013927`) is valid from 2019-07-25 and known from 2019-07-26, or from 2019-05-09 with `--view sponsor`.
+
+`--known-at` gives a snapshot of what could be known that day: on 2018-01-01 it has 35 nodes and 35 edges, with no 2021 colorectal statement, no thrombosis risk and no CARES trial, and the 2016 colorectal statement's `valid_to` is empty. The tests check that every edge in a snapshot points at nodes in the same snapshot.
+
+Only 6 of the 12 distinct risk names map cleanly to a MeSH descriptor (for example "tendinitis and tendon rupture" to Tendinopathy and Tendon Injuries). Risks such as "mortality", "cardiovascular death" and "serious neuropsychiatric events" are left unmapped rather than forced onto a loose term; they stay in the Turtle output as text.
 
 ## Three domains, one time model
 ### Care pathways: USPSTF guideline versions
@@ -93,7 +129,7 @@ The 2019 tofacitinib change was approved on July 25 and announced on July 26, so
 
 For 11 synthetic prescription fills, **10 of 11 boxed-warning answers change** when only the newest label is used. On 2020-04-01, for example, montelukast's label had no boxed warning yet, but one had been announced on 2020-03-04: asof-kg reports both, and the old label's end date became known 8 weeks before it happened.
 
-**A stale copy in public data.** On 2026-10-14 openFDA's drug label endpoint still served a repackager's Chantix (varenicline) label (set id 0fefd790-b526-4f2f-8c83-5f39f7306556, version 4, effective 2020-02-01) with the neuropsychiatric boxed warning that FDA approved removing on 2016-12-16. A graph built from it without time would assert a warning that was no longer in force. `check_copy()` flags such copies:
+**A stale copy in public data.** On 2026-10-14 openFDA's drug label endpoint still served a repackager's Chantix (varenicline) label (set id 0fefd790-b526-4f2f-8c83-5f39f7306556, version 4, effective 2020-02-01) with the neuropsychiatric boxed warning that FDA approved removing on 2016-12-16. It is the only one of the 37 varenicline labels in openFDA that day with a boxed warning. A graph built from it without time would assert a warning that was no longer in force. `check_copy()` flags such copies:
 
 ```
 >>> check_copy(load_labels(), "varenicline", "2020-02-01", copy_has_box=True)
@@ -108,10 +144,11 @@ CSTE adopts a case definition in one year and CDC uses it from the next surveill
 - **Coarse dates:** a date given only as a year or month counts as known only once its latest possible day has passed (`Instant`). The Lyme 2017 definition, adopted in "2016", is known from 2016-12-31.
 - **Views:** `view="sponsor"` uses the regulator's notice date as knowledge time; `view="public"` uses the announcement.
 - **Interval algebra:** `allen()` gives all 13 Allen relations. Consecutive versions must *meet*, and the tests check that.
-- **Consistency:** `check()` and the SHACL shapes flag versions that start before the one they replace, cycles, branches, cross-subject supersession, overlapping age bands, notices dated after announcements, and interval ends asserted before any successor exists.
+- **Consistency:** `check()` and the SHACL shapes flag versions that start before the one they replace, cycles, branches, cross-subject supersession, overlapping age bands, notices dated after announcements, interval ends asserted before any successor exists, and MeSH mappings for risks no version names.
 
 ## Ontology notes
-- `akg:Version` has three subclasses: `GuidelineVersion` (⊑ `biolink:Publication`), `LabelVersion` and `CaseDefinitionVersion` (⊑ `biolink:InformationContentEntity`). They are pairwise disjoint.
+- Namespace: `https://github.com/munimtechnologies/asof-kg/ontology#` (prefix `akg:`), with instance data under `.../data#` (`akgd:`). Versions up to 0.3.0 used `github.com/munimv2/asof-kg`; the repository moved to the Munim Technologies organization, and from 0.4.0 the ontology, the SHACL shapes and the exported data all use the new namespace. The tests check that they agree.
+- `akg:Version` has three subclasses: `GuidelineVersion` (⊑ `biolink:Publication`), `LabelVersion` and `CaseDefinitionVersion` (⊑ `biolink:InformationContentEntity`). They are pairwise disjoint. The KGX export uses the same Biolink classes.
 - `akg:supersedes` is asymmetric and irreflexive, and is a sub-property of `prov:wasRevisionOf` and of the transitive `akg:laterVersionOf`.
 - `akg:validDuring` is inferred by a property chain (`partOfGuideline` ∘ `inForceDuring`). `RoutineRecommendation`, `RecommendationAgainst` and `LabelVersionWithBoxedWarning` are defined classes a reasoner fills in. `LabelVersionWithoutBoxedWarning` states "no boxed warning" explicitly, since under the open-world assumption a missing risk is not the same as no risk.
 - `effectiveFrom`, `announcedOn` and `notifiedOn` hold valid time and the two knowledge times. `notifiedOn` is written only in sponsor-view snapshots. `announcedOn` may fall before or after `effectiveFrom`.
@@ -123,13 +160,16 @@ CSTE adopts a case definition in one year and CDC uses it from the next surveill
 ## Data sources and limits
 - USPSTF grades, age bands and dates come from PubMed records (NCBI E-utilities). The `published` date is PubMed's earliest public date, so a boundary may be a few weeks off.
 - Label dates come from FDA approval letters; boxed-warning wording from the labels on Drugs@FDA and current labels in openFDA. Only boxed warnings are tracked, not other label sections, and only five drugs so far. Risks are short names for each boxed-warning heading, not the full text.
+- MeSH mappings of risks were checked with the NLM MeSH lookup service. `has_adverse_event` says the label warns of the risk; it is not a measured rate.
+- `infores:asof-kg`, the knowledge source on every KGX edge, is not yet registered in the Biolink information resource registry.
 - Trial dates are PubMed's earliest public date; FDA signal dates are the dates of FDA Drug Safety Communications.
 - Lyme disease versions before 2011 are not included yet. Case definitions are dated by CDC's version year; surveillance years follow MMWR weeks, which start within a few days of January 1.
 - The metrics use a yearly grid of January 1 dates, so a change and its announcement in the same year look like one event. A finer grid is a one-line change in `metrics.yearly`.
-- The ontology and SHACL shapes have not yet been run through an OWL reasoner or a SHACL engine. That is the next step.
+- The ontology, SHACL shapes and KGX files have not yet been run through an OWL reasoner, a SHACL engine or the KGX validator. That is the next step.
 
 ## Next
-- KGX export for Translator tools, and reasoner/SHACL validation in CI.
+- Reasoner, SHACL and KGX validation in CI.
+- An audit of every current label copy in openFDA against the dated boxed-warning history, to count copies that still lack a required warning or still carry a removed one. A first look is in [findings/label-sync-2026-10-14.md](findings/label-sync-2026-10-14.md). Two montelukast labels posted in 2023 and 2024 still lack the boxed warning FDA required in April 2020.
 - More drugs (openFDA label history) and more conditions (NNDSS case definitions).
 - Evidence that evolves beyond labels: meta-analyses entering over time, with an as-of evidence summary.
 
@@ -137,4 +177,4 @@ Issues and corrections are welcome.
 
 ## License, credits and contact
 - Code: Apache-2.0. Data, ontology and documentation: CC BY 4.0.
-- Made by MV2 of Munim, Inc. The work was done with AI agents (Claude) working in his name, and every date was checked against the cited FDA, CDC or PubMed record. Contact: munimversion2@gmail.com.
+- Made by MV2 of Munim, Inc. The work was done with AI agents (Claude) working in his name, and every date was checked against the cited FDA, CDC, NLM or PubMed record. Contact: munimversion2@gmail.com.

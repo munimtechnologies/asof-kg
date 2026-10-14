@@ -1,4 +1,4 @@
-@prefix akg: <https://github.com/munimv2/asof-kg/ontology#> .
+@prefix akg: <https://github.com/munimtechnologies/asof-kg/ontology#> .
 @prefix biolink: <https://w3id.org/biolink/vocab/> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix obo: <http://purl.obolibrary.org/obo/> .
@@ -10,15 +10,16 @@
 @prefix time: <http://www.w3.org/2006/time#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-# asof-kg ontology 0.3.0
+# asof-kg ontology 0.4.0
 # Versions of clinical guidelines, drug labels and surveillance case
 # definitions in valid time (when a version was in force) and knowledge time
 # (when it could be known), built on OWL-Time and PROV-O and aligned to
-# Biolink. Instance data comes from `python -m asofkg ttl`.
+# Biolink. Instance data comes from `python -m asofkg ttl`; the same graph
+# in Biolink's KGX exchange format comes from `python -m asofkg kgx`.
 
-<https://github.com/munimv2/asof-kg/ontology> a owl:Ontology ;
+<https://github.com/munimtechnologies/asof-kg/ontology> a owl:Ontology ;
     rdfs:label "asof-kg: clinical knowledge versions in time"@en ;
-    owl:versionInfo "0.3.0" ;
+    owl:versionInfo "0.4.0" ;
     dcterms:creator "MV2 of Munim, Inc." ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
     rdfs:comment "Represents successive versions of clinical guidelines, drug labels and surveillance case definitions, and the intervals in which each was in force, so that queries can be answered as of any date without using knowledge that came later. Research information, not medical advice."@en .
@@ -317,7 +318,7 @@ akg:notifiedOn a owl:DatatypeProperty , owl:FunctionalProperty ;
 akg:boxedWarningRisk a owl:DatatypeProperty ;
     rdfs:domain akg:LabelVersion ;
     rdfs:label "boxed warning risk"@en ;
-    obo:IAO_0000115 "A risk named in the label version's boxed warning."@en .
+    obo:IAO_0000115 "A risk named in the label version's boxed warning. In KGX exports, a risk mapped to MeSH becomes a biolink:has_adverse_event edge from the drug to the MeSH term, with the span of time the risk stayed in the boxed warning."@en .
 
 akg:positionStatement a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:domain akg:CaseDefinitionVersion ;

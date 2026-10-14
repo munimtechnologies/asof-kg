@@ -1,24 +1,29 @@
 {
-  "about": "Successive USPSTF recommendation statements on three topics, as published versions. 'published' is the earliest public date PubMed gives (the electronic publication date when present, otherwise the issue date), checked with NCBI E-utilities on 2026-10-14. The journal may have posted some statements online a little earlier. Grades and age bands come from each statement's PubMed abstract; 'quote' fields are verbatim from the abstract. Research data, not medical advice.",
+  "about": "Successive USPSTF recommendation statements on three topics, as published versions. 'published' is the earliest public date PubMed gives (the electronic publication date when present, otherwise the issue date), checked with NCBI E-utilities on 2026-10-14. The journal may have posted some statements online a little earlier. Grades and age bands come from each statement's PubMed abstract; 'quote' fields are verbatim from the abstract. '*_category' fields give the Biolink class used in KGX exports. Research data, not medical advice.",
   "topics": {
     "colorectal-cancer-screening": {
       "label": "Screening for colorectal cancer",
       "condition": "MESH:D015179",
-      "condition_label": "Colorectal Neoplasms"
+      "condition_label": "Colorectal Neoplasms",
+      "condition_category": "biolink:Disease"
     },
     "breast-cancer-screening": {
       "label": "Screening mammography for breast cancer",
       "condition": "MESH:D001943",
       "condition_label": "Breast Neoplasms",
+      "condition_category": "biolink:Disease",
       "intervention": "MESH:D008327",
-      "intervention_label": "Mammography"
+      "intervention_label": "Mammography",
+      "intervention_category": "biolink:Procedure"
     },
     "aspirin-primary-prevention-cvd": {
       "label": "Low-dose aspirin for primary prevention of cardiovascular disease",
       "condition": "MESH:D002318",
       "condition_label": "Cardiovascular Diseases",
+      "condition_category": "biolink:Disease",
       "intervention": "MESH:D001241",
-      "intervention_label": "Aspirin"
+      "intervention_label": "Aspirin",
+      "intervention_category": "biolink:Drug"
     }
   },
   "guidelines": [

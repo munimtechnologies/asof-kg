@@ -15,6 +15,7 @@ time) and a ``view``: "public", or "sponsor" for what the regulator and the
 product's sponsor knew.
 """
 
+import datetime as dt
 import json
 import os
 
@@ -66,19 +67,24 @@ class VersionChains:
     effect, so the end of its predecessor's interval can be known ahead of
     time. A version that took effect before ``known_at`` but was announced
     after it is still invisible.
+
+    ``terms`` maps a value of a list-valued fact (a boxed-warning risk) to
+    ontology terms, each a dict with "id" and "label".
     """
 
-    def __init__(self, versions, subjects=None, kind="Version"):
+    def __init__(self, versions, subjects=None, kind="Version", terms=None):
         self.versions = list(versions)
         self.by_id = {v.id: v for v in self.versions}
         self.subject_info = dict(subjects or {})
         self.kind = kind
+        self.terms = dict(terms or {})
 
     @classmethod
     def load(cls, path):
         with open(path, encoding="utf-8") as f:
             raw = json.load(f)
-        return cls([Version(v) for v in raw["versions"]], raw.get("subjects"), raw.get("kind", "Version"))
+        return cls([Version(v) for v in raw["versions"]], raw.get("subjects"), raw.get("kind", "Version"),
+                   raw.get("terms"))
 
     def subjects(self):
         return sorted({v.subject for v in self.versions})
@@ -171,6 +177,12 @@ class VersionChains:
                 problems.append("subject %s has %d latest versions, not 1" % (subject, len(heads)))
             if len(set(replaced)) != len(replaced):
                 problems.append("subject %s branches: two versions supersede the same one" % subject)
+
+        used = {value for v in self.versions for values in v.facts.values() if isinstance(values, list)
+                for value in values}
+        for value in sorted(self.terms):
+            if value not in used:
+                problems.append("terms given for %r, which no version uses" % value)
         return problems
 
 
@@ -196,6 +208,36 @@ def boxed_warning(labels, drug, on, known_at=None, view="public"):
     if version is None:
         return None
     return list(version.facts.get("boxed_warning", []))
+
+
+def fact_spans(chains, fact, known_at=None, view="public"):
+    """When each value of a list-valued fact entered and left a subject's versions.
+
+    For boxed warnings: one span per drug and risk, from the version that
+    added the risk to the version that dropped it. Only versions known on
+    ``known_at`` (default: all) count, so a span stays open (``end`` None)
+    until the version that ends it is known; that end may lie after
+    ``known_at`` when the change was announced ahead of taking effect. Each
+    span also gives when its start and its end could first be known.
+    """
+    known_at = dt.date.max if known_at is None else as_date(known_at)
+    spans = []
+    for subject in chains.subjects():
+        versions = sorted(chains._known(subject, known_at, view), key=lambda v: v.effective.latest)
+        current = {}
+        for v in versions:
+            values = v.facts.get(fact, [])
+            for value in [x for x in current if x not in values]:
+                current.pop(value).update(end=v.effective.latest, ended_by=v.id,
+                                          end_known_from=v.known_from(view).latest)
+            for value in values:
+                if value not in current:
+                    current[value] = {"subject": subject, "value": value,
+                                      "start": v.effective.latest, "started_by": v.id,
+                                      "start_known_from": v.known_from(view).latest,
+                                      "end": None, "ended_by": None, "end_known_from": None}
+                    spans.append(current[value])
+    return spans
 
 
 def check_copy(labels, drug, copy_date, copy_has_box, view="public"):

@@ -2,8 +2,8 @@
 # Combines the as-of version choice with the recommendation's population.
 # Load ontology/asofkg.ttl together with the data (grade labels live there).
 # Risk thresholds (akg:minTenYearCvdRisk) are left out for brevity.
-PREFIX akg: <https://github.com/munimv2/asof-kg/ontology#>
-PREFIX akgd: <https://github.com/munimv2/asof-kg/data#>
+PREFIX akg: <https://github.com/munimtechnologies/asof-kg/ontology#>
+PREFIX akgd: <https://github.com/munimtechnologies/asof-kg/data#>
 PREFIX obo: <http://purl.obolibrary.org/obo/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
