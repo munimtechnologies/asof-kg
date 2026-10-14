@@ -1,0 +1,238 @@
+@prefix akg: <https://github.com/munimv2/asof-kg/ontology#> .
+@prefix biolink: <https://w3id.org/biolink/vocab/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# asof-kg ontology 0.1.0
+# Guideline versions in valid time (when a version was in force) and knowledge
+# time (when it could be known), built on OWL-Time and PROV-O and aligned to
+# Biolink. Instance data comes from `python -m asofkg ttl`.
+
+<https://github.com/munimv2/asof-kg/ontology> a owl:Ontology ;
+    rdfs:label "asof-kg: clinical guideline versions in time"@en ;
+    owl:versionInfo "0.1.0" ;
+    dcterms:creator "MV2 of Munim, Inc." ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    rdfs:comment "Represents successive versions of clinical guidelines, the graded recommendations inside them, and the intervals in which each was in force, so that queries can be answered as of any date without using knowledge published later. Research information, not medical advice."@en .
+
+#################################################################
+# Terms reused from other vocabularies (declared, not imported)
+#################################################################
+
+dcterms:creator a owl:AnnotationProperty .
+dcterms:license a owl:AnnotationProperty .
+skos:relatedMatch a owl:AnnotationProperty .
+skos:closeMatch a owl:AnnotationProperty .
+obo:IAO_0000115 a owl:AnnotationProperty ; rdfs:label "definition"@en .
+
+biolink:Association a owl:Class .
+biolink:Publication a owl:Class .
+biolink:ClinicalIntervention a owl:Class .
+biolink:Disease a owl:Class .
+prov:Entity a owl:Class .
+time:ProperInterval a owl:Class .
+time:Instant a owl:Class .
+
+prov:wasDerivedFrom a owl:ObjectProperty .
+prov:wasRevisionOf a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasDerivedFrom .
+time:hasBeginning a owl:ObjectProperty .
+time:hasEnd a owl:ObjectProperty .
+time:inXSDDate a owl:DatatypeProperty .
+obo:BFO_0000050 a owl:ObjectProperty ; rdfs:label "part of"@en .
+
+#################################################################
+# Classes
+#################################################################
+
+akg:PreventiveServiceTopic a owl:Class ;
+    rdfs:subClassOf biolink:ClinicalIntervention ;
+    rdfs:label "preventive service topic"@en ;
+    obo:IAO_0000115 "A preventive service that a guideline body issues successive recommendation statements about, such as screening for colorectal cancer."@en .
+
+akg:GuidelineVersion a owl:Class ;
+    rdfs:subClassOf biolink:Publication , prov:Entity ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:topic ;
+          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+          owl:onClass akg:PreventiveServiceTopic ] ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:publishedOn ;
+          owl:cardinality "1"^^xsd:nonNegativeInteger ] ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:inForceDuring ;
+          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+          owl:onClass time:ProperInterval ] ,
+        [ a owl:Restriction ;
+          owl:onProperty prov:wasDerivedFrom ;
+          owl:minCardinality "1"^^xsd:nonNegativeInteger ] ;
+    rdfs:label "guideline version"@en ;
+    obo:IAO_0000115 "One published version of a guideline on one topic. It is in force from its publication until a version that supersedes it is published."@en .
+
+akg:Recommendation a owl:Class ;
+    rdfs:subClassOf biolink:Association , prov:Entity ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:partOfGuideline ;
+          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+          owl:onClass akg:GuidelineVersion ] ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:hasGrade ;
+          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+          owl:onClass akg:Grade ] ;
+    rdfs:label "recommendation"@en ;
+    obo:IAO_0000115 "One graded recommendation for one population (sex, age band, risk threshold) inside a guideline version."@en .
+
+akg:Grade a owl:Class ;
+    owl:equivalentClass [ a owl:Class ;
+        owl:oneOf ( akg:GradeA akg:GradeB akg:GradeC akg:GradeD akg:GradeI ) ] ;
+    rdfs:label "recommendation grade"@en ;
+    obo:IAO_0000115 "A USPSTF letter grade."@en .
+
+akg:RoutineGrade a owl:Class ;
+    rdfs:subClassOf akg:Grade ;
+    owl:equivalentClass [ a owl:Class ; owl:oneOf ( akg:GradeA akg:GradeB ) ] ;
+    rdfs:label "routine grade"@en ;
+    obo:IAO_0000115 "Grades for which clinicians are asked to offer or provide the service."@en .
+
+akg:AgainstGrade a owl:Class ;
+    rdfs:subClassOf akg:Grade ;
+    owl:equivalentClass [ a owl:Class ; owl:oneOf ( akg:GradeD ) ] ;
+    rdfs:label "against grade"@en ;
+    obo:IAO_0000115 "Grades that recommend against the service."@en .
+
+akg:RoutineRecommendation a owl:Class ;
+    owl:equivalentClass [ a owl:Class ;
+        owl:intersectionOf ( akg:Recommendation
+            [ a owl:Restriction ; owl:onProperty akg:hasGrade ; owl:someValuesFrom akg:RoutineGrade ] ) ] ;
+    rdfs:label "routine recommendation"@en ;
+    obo:IAO_0000115 "A recommendation a reasoner classifies as routine from its grade alone; not offering the service is a care gap while its version is in force."@en .
+
+akg:RecommendationAgainst a owl:Class ;
+    owl:equivalentClass [ a owl:Class ;
+        owl:intersectionOf ( akg:Recommendation
+            [ a owl:Restriction ; owl:onProperty akg:hasGrade ; owl:someValuesFrom akg:AgainstGrade ] ) ] ;
+    rdfs:label "recommendation against"@en .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( akg:PreventiveServiceTopic akg:GuidelineVersion akg:Recommendation akg:Grade ) .
+
+#################################################################
+# Grades
+#################################################################
+
+akg:GradeA a owl:NamedIndividual , akg:Grade ;
+    rdfs:label "A"@en ;
+    rdfs:comment "Recommended; high certainty that the net benefit is substantial."@en .
+
+akg:GradeB a owl:NamedIndividual , akg:Grade ;
+    rdfs:label "B"@en ;
+    rdfs:comment "Recommended; high certainty that the net benefit is moderate, or moderate certainty that it is moderate to substantial."@en .
+
+akg:GradeC a owl:NamedIndividual , akg:Grade ;
+    rdfs:label "C"@en ;
+    rdfs:comment "Offer selectively by professional judgment and patient preference; at least moderate certainty that the net benefit is small."@en .
+
+akg:GradeD a owl:NamedIndividual , akg:Grade ;
+    rdfs:label "D"@en ;
+    rdfs:comment "Recommended against; moderate or high certainty of no net benefit or that harms outweigh benefits."@en .
+
+akg:GradeI a owl:NamedIndividual , akg:Grade ;
+    rdfs:label "I"@en ;
+    rdfs:comment "Evidence insufficient to assess the balance of benefits and harms."@en .
+
+[] a owl:AllDifferent ;
+    owl:distinctMembers ( akg:GradeA akg:GradeB akg:GradeC akg:GradeD akg:GradeI ) .
+
+#################################################################
+# Object properties
+#################################################################
+
+akg:topic a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:GuidelineVersion ;
+    rdfs:range akg:PreventiveServiceTopic ;
+    rdfs:label "topic"@en .
+
+akg:supersedes a owl:ObjectProperty , owl:AsymmetricProperty , owl:IrreflexiveProperty ;
+    rdfs:subPropertyOf prov:wasRevisionOf , akg:laterVersionOf ;
+    rdfs:domain akg:GuidelineVersion ;
+    rdfs:range akg:GuidelineVersion ;
+    rdfs:label "supersedes"@en ;
+    obo:IAO_0000115 "The newer version replaces the older one from the newer one's publication date. The older version's interval ends where the newer one's begins (OWL-Time intervalMeets); SHACL shapes in shapes/ check this."@en .
+
+akg:laterVersionOf a owl:ObjectProperty , owl:TransitiveProperty ;
+    rdfs:domain akg:GuidelineVersion ;
+    rdfs:range akg:GuidelineVersion ;
+    rdfs:label "later version of"@en ;
+    obo:IAO_0000115 "Transitive closure of supersedes: any earlier version in the same chain."@en .
+
+akg:inForceDuring a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:GuidelineVersion ;
+    rdfs:range time:ProperInterval ;
+    skos:relatedMatch biolink:temporal_interval_qualifier ;
+    rdfs:label "in force during"@en ;
+    obo:IAO_0000115 "The valid-time interval in which a version was in force. An interval with no time:hasEnd is open as far as the graph knows: its end is asserted only once a superseding version is published, so snapshots never contain an end that was unknowable at the snapshot date. Biolink's temporal_interval_qualifier is string-valued and cannot point at an OWL-Time interval, so this object property carries the interval and is mapped to it."@en .
+
+akg:partOfGuideline a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf obo:BFO_0000050 ;
+    rdfs:domain akg:Recommendation ;
+    rdfs:range akg:GuidelineVersion ;
+    rdfs:label "part of guideline"@en .
+
+akg:validDuring a owl:ObjectProperty ;
+    owl:propertyChainAxiom ( akg:partOfGuideline akg:inForceDuring ) ;
+    rdfs:domain akg:Recommendation ;
+    rdfs:range time:ProperInterval ;
+    rdfs:label "valid during"@en ;
+    obo:IAO_0000115 "Inferred: a recommendation is valid during the interval its guideline version was in force."@en .
+
+akg:hasGrade a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:Recommendation ;
+    rdfs:range akg:Grade ;
+    rdfs:label "has grade"@en .
+
+akg:sex a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:Recommendation ;
+    rdfs:label "sex"@en ;
+    obo:IAO_0000115 "The sex the recommendation applies to, as a PATO term (PATO:0000383 female, PATO:0000384 male). Absent when it applies to everyone."@en .
+
+akg:aboutCondition a owl:ObjectProperty ;
+    rdfs:domain akg:PreventiveServiceTopic ;
+    rdfs:range biolink:Disease ;
+    rdfs:label "about condition"@en .
+
+akg:usesIntervention a owl:ObjectProperty ;
+    rdfs:domain akg:PreventiveServiceTopic ;
+    rdfs:label "uses intervention"@en .
+
+#################################################################
+# Data properties
+#################################################################
+
+akg:publishedOn a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:GuidelineVersion ;
+    rdfs:range xsd:date ;
+    skos:closeMatch prov:generatedAtTime ;
+    rdfs:label "published on"@en ;
+    obo:IAO_0000115 "Earliest public date of the version. It is both when the version starts to be in force (valid time) and when it can first be known (knowledge time)."@en .
+
+akg:minAge a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:Recommendation ;
+    rdfs:range xsd:integer ;
+    rdfs:label "minimum age in years"@en .
+
+akg:maxAge a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:Recommendation ;
+    rdfs:range xsd:integer ;
+    rdfs:label "maximum age in years (inclusive)"@en .
+
+akg:minTenYearCvdRisk a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:Recommendation ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "minimum 10-year cardiovascular risk"@en .

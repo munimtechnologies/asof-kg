@@ -1,0 +1,32 @@
+# Which graded recommendation covered a person of a given age and sex on ?on?
+# Combines the as-of version choice with the recommendation's population.
+# Load ontology/asofkg.ttl together with the data (grade labels live there).
+# Risk thresholds (akg:minTenYearCvdRisk) are left out for brevity.
+PREFIX akg: <https://github.com/munimv2/asof-kg/ontology#>
+PREFIX akgd: <https://github.com/munimv2/asof-kg/data#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?version ?grade WHERE {
+  VALUES (?topic ?on ?age ?sex) {
+    (akgd:breast-cancer-screening "2023-05-01"^^xsd:date 42 obo:PATO_0000383)
+  }
+  ?version akg:topic ?topic ;
+           akg:publishedOn ?published .
+  FILTER (?published <= ?on)
+  FILTER NOT EXISTS {
+    ?newer akg:supersedes ?version ;
+           akg:publishedOn ?q .
+    FILTER (?q <= ?on)
+  }
+  ?rec akg:partOfGuideline ?version ;
+       akg:hasGrade ?g .
+  ?g rdfs:label ?grade .
+  OPTIONAL { ?rec akg:minAge ?min }
+  OPTIONAL { ?rec akg:maxAge ?max }
+  OPTIONAL { ?rec akg:sex ?recSex }
+  FILTER (!BOUND(?min) || ?age >= ?min)
+  FILTER (!BOUND(?max) || ?age <= ?max)
+  FILTER (!BOUND(?recSex) || ?recSex = ?sex)
+}

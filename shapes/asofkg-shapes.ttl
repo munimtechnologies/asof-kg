@@ -1,0 +1,101 @@
+@prefix akg: <https://github.com/munimv2/asof-kg/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Temporal consistency rules that OWL alone cannot state, as SHACL.
+# Run against the output of `python -m asofkg ttl` (any --known-at snapshot).
+
+<https://github.com/munimv2/asof-kg/shapes> a owl:Ontology ;
+    sh:declare [ sh:prefix "akg" ; sh:namespace "https://github.com/munimv2/asof-kg/ontology#"^^xsd:anyURI ] ,
+               [ sh:prefix "time" ; sh:namespace "http://www.w3.org/2006/time#"^^xsd:anyURI ] .
+
+akg:GuidelineVersionShape a sh:NodeShape ;
+    sh:targetClass akg:GuidelineVersion ;
+    sh:property [ sh:path akg:publishedOn ; sh:datatype xsd:date ; sh:minCount 1 ; sh:maxCount 1 ] ,
+                [ sh:path akg:topic ; sh:minCount 1 ; sh:maxCount 1 ] ,
+                [ sh:path akg:inForceDuring ; sh:class time:ProperInterval ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "A version must be published after the version it supersedes." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this akg:supersedes ?value ;
+                      akg:publishedOn ?new .
+                ?value akg:publishedOn ?old .
+                FILTER (?new <= ?old)
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "A version and the version it supersedes must share a topic." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this akg:supersedes ?value ;
+                      akg:topic ?t1 .
+                ?value akg:topic ?t2 .
+                FILTER (?t1 != ?t2)
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "Two versions must not supersede the same version." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                ?value akg:supersedes $this .
+                ?other akg:supersedes $this .
+                FILTER (?value != ?other)
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "A version's interval must begin on its publication date." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this akg:publishedOn ?p ;
+                      akg:inForceDuring/time:hasBeginning/time:inXSDDate ?value .
+                FILTER (?value != ?p)
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "Once a successor is known, the superseded version's interval must end on the successor's publication date." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                ?newer akg:supersedes $this ;
+                       akg:publishedOn ?value .
+                FILTER NOT EXISTS {
+                    $this akg:inForceDuring/time:hasEnd/time:inXSDDate ?end .
+                    FILTER (?end = ?value)
+                }
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "An interval may end only when a known successor begins (no end asserted ahead of its evidence)." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this akg:inForceDuring/time:hasEnd/time:inXSDDate ?value .
+                FILTER NOT EXISTS { ?newer akg:supersedes $this }
+            }"""
+    ] .
+
+akg:RecommendationShape a sh:NodeShape ;
+    sh:targetClass akg:Recommendation ;
+    sh:property [ sh:path akg:partOfGuideline ; sh:class akg:GuidelineVersion ; sh:minCount 1 ; sh:maxCount 1 ] ,
+                [ sh:path akg:hasGrade ; sh:minCount 1 ; sh:maxCount 1 ;
+                  sh:in ( akg:GradeA akg:GradeB akg:GradeC akg:GradeD akg:GradeI ) ] ,
+                [ sh:path akg:minAge ; sh:datatype xsd:integer ; sh:maxCount 1 ; sh:minInclusive 0 ] ,
+                [ sh:path akg:maxAge ; sh:datatype xsd:integer ; sh:maxCount 1 ; sh:minInclusive 0 ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "A recommendation's age band must not be empty." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this akg:minAge ?value ; akg:maxAge ?max .
+                FILTER (?value > ?max)
+            }"""
+    ] .
