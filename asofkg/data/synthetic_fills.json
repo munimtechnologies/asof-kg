@@ -8,6 +8,9 @@
     {"id": "F5", "date": "2020-04-01", "drug": "montelukast"},
     {"id": "F6", "date": "2007-05-01", "drug": "levofloxacin"},
     {"id": "F7", "date": "2009-06-01", "drug": "levofloxacin"},
-    {"id": "F8", "date": "2016-06-01", "drug": "levofloxacin"}
+    {"id": "F8", "date": "2016-06-01", "drug": "levofloxacin"},
+    {"id": "F9", "date": "2019-07-25", "drug": "tofacitinib"},
+    {"id": "F10", "date": "2018-06-01", "drug": "febuxostat"},
+    {"id": "F11", "date": "2021-10-01", "drug": "tofacitinib"}
   ]
 }

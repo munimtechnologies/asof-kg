@@ -9,8 +9,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from asofkg import (GuidelineKG, GuidelineVersion, Instant, Version, VersionChains, allen, audit,  # noqa: E402
-                    boxed_warning, check_copy, label_audit, load_case_definitions, load_encounters,
-                    load_fills, load_labels, to_turtle, versions_to_turtle)
+                    boxed_warning, check_copy, evidence_lag, guideline_points, label_audit,
+                    load_case_definitions, load_encounters, load_fills, load_labels, summarize, to_turtle,
+                    version_points, versions_to_turtle, yearly)
 from asofkg.__main__ import main  # noqa: E402
 
 CRC = "colorectal-cancer-screening"
@@ -212,10 +213,11 @@ class LabelTests(unittest.TestCase):
 
     def test_label_data_is_consistent(self):
         self.assertEqual(self.labels.check(), [])
-        self.assertEqual(self.labels.subjects(), ["levofloxacin", "montelukast", "varenicline"])
+        self.assertEqual(self.labels.subjects(),
+                         ["febuxostat", "levofloxacin", "montelukast", "tofacitinib", "varenicline"])
 
     def test_boxed_warning_history(self):
-        box = lambda drug, on: boxed_warning(self.labels, drug, on)  # noqa: E731
+        box = lambda drug, on, known_at=None: boxed_warning(self.labels, drug, on, known_at)  # noqa: E731
         self.assertEqual(box("levofloxacin", "2008-10-02"), [])
         self.assertEqual(box("levofloxacin", "2008-10-03"), ["tendinitis and tendon rupture"])
         self.assertEqual(box("levofloxacin", "2011-02-25"),
@@ -226,6 +228,22 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(box("montelukast", "2020-04-28"), [])
         self.assertEqual(box("montelukast", "2020-04-29"), NEURO)
         self.assertIsNone(box("montelukast", "1990-01-01"))
+        self.assertEqual(box("febuxostat", "2019-02-20"), [])
+        self.assertEqual(box("febuxostat", "2019-02-21"), ["cardiovascular death"])
+        self.assertEqual(box("tofacitinib", "2012-11-06"), ["serious infections", "malignancy"])
+        self.assertEqual(box("tofacitinib", "2021-12-02"),
+                         ["serious infections", "mortality", "malignancy",
+                          "major adverse cardiovascular events", "thrombosis"])
+
+    def test_announced_after_it_took_effect(self):
+        # The 2019 tofacitinib label was approved on July 25 and announced on July 26.
+        self.assertEqual(boxed_warning(self.labels, "tofacitinib", "2019-07-25"),
+                         ["serious infections", "malignancy"])
+        self.assertEqual(boxed_warning(self.labels, "tofacitinib", "2019-07-25", known_at="2019-07-26"),
+                         ["serious infections", "mortality", "malignancy", "thrombosis"])
+        self.assertEqual(self.labels.interval("tofacitinib-2012", "2019-07-25"), (D(2012, 11, 6), None))
+        self.assertEqual(self.labels.interval("tofacitinib-2012", "2019-07-26"),
+                         (D(2012, 11, 6), D(2019, 7, 25)))
 
     def test_announced_before_it_takes_effect(self):
         self.assertEqual(self.labels.pending("montelukast", "2020-03-03"), [])
@@ -243,6 +261,9 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(self.labels.pending("levofloxacin", "2010-12-01"), [])
         self.assertEqual([v.id for v in self.labels.pending("levofloxacin", "2010-12-01", view="sponsor")],
                          ["levofloxacin-2011"])
+        self.assertEqual(self.labels.pending("tofacitinib", "2021-08-25"), [])
+        self.assertEqual([v.id for v in self.labels.pending("tofacitinib", "2021-08-25", view="sponsor")],
+                         ["tofacitinib-2021"])
         with self.assertRaises(ValueError):
             self.labels.pending("varenicline", "2009-03-01", view="press")
 
@@ -279,8 +300,14 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(rows["F5"]["static"], NEURO)
         self.assertEqual(rows["F8"]["then_version"], "levofloxacin-2011")
         self.assertEqual(rows["F8"]["announced"], ["levofloxacin-2016"])
+        self.assertEqual(rows["F9"]["then_version"], "tofacitinib-2012")
+        self.assertEqual(rows["F9"]["announced"], [])
+        self.assertEqual(rows["F10"]["then"], [])
+        self.assertEqual(rows["F10"]["static"], ["cardiovascular death"])
+        self.assertEqual(rows["F11"]["then_version"], "tofacitinib-2019")
+        self.assertEqual(rows["F11"]["announced"], ["tofacitinib-2021"])
         self.assertEqual(sorted(k for k, r in rows.items() if not r["agree"]),
-                         ["F2", "F3", "F4", "F5", "F6", "F7", "F8"])
+                         ["F10", "F11", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"])
 
     def test_stale_copy(self):
         # A label copy dated 2020-02-01 that still shows the boxed warning removed in 2016.
@@ -310,6 +337,73 @@ class CaseDefinitionTests(unittest.TestCase):
     def test_year_only_adoption_counts_from_year_end(self):
         self.assertEqual(self.cd.pending(LYME, "2016-12-30"), [])
         self.assertEqual([v.id for v in self.cd.pending(LYME, "2016-12-31")], ["lyme-2017"])
+
+
+class MetricsTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.kg = GuidelineKG.load()
+        cls.labels = load_labels()
+        cls.cd = load_case_definitions()
+        cls.years = yearly(2000, 2026)
+
+    def counts(self, summary):
+        return summary["queries"], summary["changed"], summary["leaked"], summary["hindsight"]
+
+    def test_yearly(self):
+        self.assertEqual(len(self.years), 27)
+        self.assertEqual((self.years[0], self.years[-1]), (D(2000, 1, 1), D(2026, 1, 1)))
+
+    def test_guideline_metrics(self):
+        self.assertEqual(self.counts(summarize(guideline_points(self.kg, self.years))), (45, 34, 34, 0))
+
+    def test_label_metrics(self):
+        rows = version_points(self.labels, self.years, fact="boxed_warning")
+        self.assertEqual(self.counts(summarize(rows)), (105, 67, 67, 0))
+        self.assertEqual(self.counts(summarize(rows, by="value")), (105, 64, 67, 0))
+        vare = [r for r in rows if r["subject"] == "varenicline"]
+        self.assertEqual(self.counts(summarize(vare)), (20, 10, 10, 0))
+        self.assertEqual(summarize(vare, by="value")["changed"], 7)
+        # 2007-2009: "no boxed warning" from the newest label is right, but only through the 2016 removal.
+        lucky = [r["day"].year for r in vare if not r["static_known"] and r["then_value"] == r["static_value"]]
+        self.assertEqual(lucky, [2007, 2008, 2009])
+
+    def test_case_definition_metrics(self):
+        self.assertEqual(self.counts(summarize(version_points(self.cd, self.years))), (16, 11, 11, 0))
+
+    def test_skips_days_before_the_first_version(self):
+        rows = version_points(self.labels, self.years)
+        self.assertEqual(min(r["day"] for r in rows if r["subject"] == "tofacitinib"), D(2013, 1, 1))
+        self.assertEqual(min(r["day"] for r in guideline_points(self.kg, self.years) if r["subject"] == ASPIRIN),
+                         D(2017, 1, 1))
+
+    def test_no_hindsight_on_a_fine_grid(self):
+        days = [D(1996, 1, 1) + dt.timedelta(days=n) for n in range(0, 11400, 11)]
+        for view in ("public", "sponsor"):
+            self.assertEqual(summarize(version_points(self.labels, days, view))["hindsight"], 0)
+            self.assertEqual(summarize(version_points(self.cd, days, view))["hindsight"], 0)
+        self.assertEqual(summarize(guideline_points(self.kg, days))["hindsight"], 0)
+
+    def test_rates(self):
+        s = summarize(version_points(self.cd, self.years))
+        self.assertAlmostEqual(s["changed_rate"], 11 / 16)
+        self.assertEqual(summarize([])["changed_rate"], 0.0)
+        with self.assertRaises(ValueError):
+            summarize([], by="grade")
+
+    def test_evidence_lag(self):
+        rows = {r["id"]: r for r in evidence_lag(self.labels)}
+        self.assertEqual(sorted(rows), ["febuxostat-2019", "tofacitinib-2019", "tofacitinib-2021", "varenicline-2016"])
+        self.assertEqual(rows["varenicline-2016"]["evidence_lag_days"], 238)
+        self.assertIsNone(rows["varenicline-2016"]["signal_lag_days"])
+        self.assertEqual(rows["febuxostat-2019"]["evidence_pmid"], "29527974")
+        self.assertEqual(rows["febuxostat-2019"]["evidence_lag_days"], 346)
+        self.assertEqual(rows["febuxostat-2019"]["signal_lag_days"], 463)
+        self.assertIsNone(rows["tofacitinib-2019"]["evidence_lag_days"])
+        self.assertEqual(rows["tofacitinib-2019"]["signal_lag_days"], 150)
+        # The label changed before the trial report appeared in a journal.
+        self.assertEqual(rows["tofacitinib-2021"]["evidence_lag_days"], -56)
+        self.assertEqual(rows["tofacitinib-2021"]["signal_lag_days"], 301)
 
 
 class TurtleTests(unittest.TestCase):
@@ -347,10 +441,20 @@ class TurtleTests(unittest.TestCase):
 
     def test_full_label_graph(self):
         full = versions_to_turtle(load_labels())
-        self.assertEqual(full.count(" a akg:LabelVersion ;"), 9)
+        self.assertEqual(full.count(" a akg:LabelVersion ;"), 14)
         self.assertIn("a akg:LabelVersionWithoutBoxedWarning ;", full)
         self.assertIn('akg:boxedWarningRisk "exacerbation of myasthenia gravis"@en', full)
+        self.assertIn('akg:boxedWarningRisk "major adverse cardiovascular events"@en', full)
         self.assertIn("RXNORM:591622 a biolink:Drug", full)
+        self.assertIn("RXNORM:73689 a biolink:Drug", full)
+        self.assertIn("RXNORM:1357536 a biolink:Drug", full)
+        self.assertIn("prov:wasInfluencedBy pubmed:29527974 ;", full)
+        self.assertEqual(full.count("prov:wasInfluencedBy pubmed:"), 3)
+
+    def test_evidence_link_hidden_until_the_change_is_known(self):
+        ttl = versions_to_turtle(load_labels(), "2018-06-01")
+        self.assertNotIn("pubmed:29527974", ttl)
+        self.assertIn("akgd:febuxostat-2009 a akg:LabelVersion", ttl)
 
     def test_case_definition_graph(self):
         full = versions_to_turtle(load_case_definitions())
@@ -362,9 +466,11 @@ class TurtleTests(unittest.TestCase):
         with open(os.path.join(HERE, "ontology", "asofkg.ttl"), encoding="utf-8") as f:
             text = f.read()
         self.assertIn("owl:Ontology", text)
+        self.assertIn('owl:versionInfo "0.3.0"', text)
         for term in ("akg:supersedes", "akg:inForceDuring", "akg:validDuring", "akg:Recommendation",
                      "akg:Version", "akg:LabelVersion", "akg:CaseDefinitionVersion",
-                     "akg:effectiveFrom", "akg:announcedOn", "akg:notifiedOn", "akg:boxedWarningRisk"):
+                     "akg:effectiveFrom", "akg:announcedOn", "akg:notifiedOn", "akg:boxedWarningRisk",
+                     "prov:wasInfluencedBy"):
             self.assertIn(term + " a owl:", text)
 
     def test_shapes_file_present(self):
@@ -394,8 +500,21 @@ class CliTests(unittest.TestCase):
     def test_labels(self):
         code, out = self.run_main("labels", "--known-at", "2026-10-13")
         self.assertEqual(code, 0)
-        self.assertIn("7 of 8 boxed-warning answers change when time is ignored.", out)
+        self.assertIn("10 of 11 boxed-warning answers change when time is ignored.", out)
         self.assertIn("announced, not yet on the label: montelukast-2020", out)
+        self.assertIn("announced, not yet on the label: tofacitinib-2021", out)
+
+    def test_metrics(self):
+        code, out = self.run_main("metrics", "--known-at", "2026-10-14")
+        self.assertEqual(code, 0)
+        self.assertIn("on January 1 of 2000-2026 (public view)", out)
+        self.assertIn("34 (76%)", out)
+        self.assertIn("64 (61%)", out)
+        self.assertIn("11 (69%)", out)
+        self.assertIn("112 (67%)", out)
+        self.assertIn("trial report 2018-03-12 (346 days before)", out)
+        self.assertIn("trial report 2022-01-27 (56 days after)", out)
+        self.assertIn("FDA signal notice 2019-02-25 (150 days before)", out)
 
     def test_ttl(self):
         code, out = self.run_main("ttl", "--known-at", "2018-01-01")

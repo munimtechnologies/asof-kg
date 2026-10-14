@@ -109,7 +109,8 @@ def versions_to_turtle(chains, known_at=None, view="public", prefixes=True):
     The interval of a version ends only once a successor is known; the end
     may lie after ``known_at`` when the successor was announced ahead of
     taking effect. Sponsor-only notification dates are written only in the
-    "sponsor" view.
+    "sponsor" view. A trial report a label change rests on is linked with
+    prov:wasInfluencedBy.
     """
     known_at = dt.date.max if known_at is None else as_date(known_at)
     lines = [PREFIXES] if prefixes else []
@@ -139,6 +140,8 @@ def versions_to_turtle(chains, known_at=None, view="public", prefixes=True):
             lines.append("    a akg:LabelVersionWithoutBoxedWarning ;")
         if v.facts.get("position_statement"):
             lines.append("    akg:positionStatement %s ;" % _literal(v.facts["position_statement"]))
+        if v.facts.get("evidence_pmid"):
+            lines.append("    prov:wasInfluencedBy pubmed:%s ;" % v.facts["evidence_pmid"])
         for url in v.sources:
             lines.append("    prov:wasDerivedFrom %s ;" % _iri(url))
         lines.append("    akg:inForceDuring %s-interval ." % node)

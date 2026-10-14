@@ -1,10 +1,12 @@
 {
-  "about": "Boxed-warning history of three US drug labels, as versions. 'effective' is the date FDA approved the labeling change (the approval letter says it is effective on the letter's date). 'notified' is the date of FDA's letter to the sponsor under FDCA section 505(o)(4), known then only to FDA and the sponsor; it is taken from the later approval letter. 'announced' is the first public date (FDA announcement or news release); when absent, the change is treated as public from its approval. Each first version is the original approval, whose label had no boxed warning. Dates and wording were checked on 2026-10-14 against FDA approval letters on Drugs@FDA (accessdata.fda.gov) and current labels in openFDA. Only boxed warnings are tracked here, not other label sections. Research data, not medical advice.",
+  "about": "Boxed-warning history of five US drug labels, as versions. 'effective' is the date FDA approved the labeling change (the approval letter says it is effective on the letter's date). 'notified' is the date of FDA's letter to the sponsor under FDCA section 505(o)(4), known then only to FDA and the sponsor; it is taken from the later approval letter. 'announced' is the first public date (FDA announcement or news release); when absent, the change is treated as public from its approval. Each first version is the original approval. 'evidence_first_public' is when the trial report behind a change first appeared in a journal (PubMed); 'signal_first_public' is FDA's first public notice of the safety signal. Dates and wording were checked on 2026-10-14 against FDA approval letters and labels on Drugs@FDA (accessdata.fda.gov), current labels in openFDA, and PubMed. Only boxed warnings are tracked here, not other label sections. Research data, not medical advice.",
   "kind": "LabelVersion",
   "subjects": {
     "levofloxacin": {"label": "levofloxacin (Levaquin, NDA 020634)", "rxcui": "82122"},
     "varenicline": {"label": "varenicline (Chantix, NDA 021928)", "rxcui": "591622"},
-    "montelukast": {"label": "montelukast (Singulair, NDA 020829)", "rxcui": "88249"}
+    "montelukast": {"label": "montelukast (Singulair, NDA 020829)", "rxcui": "88249"},
+    "febuxostat": {"label": "febuxostat (Uloric, NDA 021856)", "rxcui": "73689"},
+    "tofacitinib": {"label": "tofacitinib (Xeljanz, NDA 203214)", "rxcui": "1357536"}
   },
   "versions": [
     {
@@ -116,6 +118,80 @@
       "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2020/020829Orig1s073,%20020830Orig1s075,%20021409Orig1s051ltr.pdf",
                   "https://api.fda.gov/drug/label.json?search=openfda.generic_name:montelukast+AND+_exists_:boxed_warning&limit=1"],
       "note": "FDA's Safety Labeling Change Notification Letter and its public Drug Safety Communication are both dated March 4, 2020; the labeling was approved on April 29, 2020."
+    },
+    {
+      "id": "febuxostat-2009",
+      "subject": "febuxostat",
+      "title": "Uloric original approval (NDA 021856, ORIG-1)",
+      "effective": "2009-02-13",
+      "supersedes": null,
+      "facts": {"boxed_warning": []},
+      "sources": ["https://www.accessdata.fda.gov/scripts/cder/daf/index.cfm?event=overview.process&ApplNo=021856",
+                  "https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2009/021856s000ltr.pdf"],
+      "note": "The approval letter required a postmarketing trial (PMR 811-1) of whether Uloric raises the risk of serious cardiovascular outcomes compared with allopurinol; that trial became CARES."
+    },
+    {
+      "id": "febuxostat-2019",
+      "subject": "febuxostat",
+      "title": "Boxed warning added: cardiovascular death, after the CARES trial (S-013)",
+      "announced": "2019-02-21",
+      "effective": "2019-02-21",
+      "supersedes": "febuxostat-2009",
+      "facts": {"boxed_warning": ["cardiovascular death"],
+                "quote": "WARNING: CARDIOVASCULAR DEATH",
+                "evidence_pmid": "29527974",
+                "evidence_first_public": "2018-03-12",
+                "signal_first_public": "2017-11-15"},
+      "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2019/021856Orig1s013ltr.pdf",
+                  "https://api.fda.gov/drug/label.json?search=openfda.generic_name:febuxostat+AND+_exists_:boxed_warning&limit=1",
+                  "https://pubmed.ncbi.nlm.nih.gov/29527974/"],
+      "note": "Takeda submitted the CARES results on January 19, 2018 (sNDA S-013). FDA first announced the preliminary CARES signal in a Drug Safety Communication on November 15, 2017; the trial (White et al., N Engl J Med) was e-published March 12, 2018. FDA approved the labeling, including the boxed warning, on February 21, 2019 and announced it in a Drug Safety Communication that day. No 505(o)(4) letter is cited, so no sponsor-only date is given."
+    },
+    {
+      "id": "tofacitinib-2012",
+      "subject": "tofacitinib",
+      "title": "Xeljanz original approval with boxed warning: serious infections and malignancy (NDA 203214, ORIG-1)",
+      "effective": "2012-11-06",
+      "supersedes": null,
+      "facts": {"boxed_warning": ["serious infections", "malignancy"],
+                "quote": "WARNING: SERIOUS INFECTIONS AND MALIGNANCY"},
+      "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2012/203214Orig1s000ltr.pdf",
+                  "https://www.accessdata.fda.gov/drugsatfda_docs/label/2012/203214s000lbl.pdf"],
+      "note": "Unlike the other drugs here, the label carried a boxed warning from approval."
+    },
+    {
+      "id": "tofacitinib-2019",
+      "subject": "tofacitinib",
+      "title": "Boxed warning extended: mortality and thrombosis (S-024)",
+      "notified": "2019-05-09",
+      "announced": "2019-07-26",
+      "effective": "2019-07-25",
+      "supersedes": "tofacitinib-2012",
+      "facts": {"boxed_warning": ["serious infections", "mortality", "malignancy", "thrombosis"],
+                "quote": "WARNING: SERIOUS INFECTIONS, MORTALITY, MALIGNANCY AND THROMBOSIS",
+                "signal_first_public": "2019-02-25"},
+      "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2019/203214Orig1s024,%20208246Orig1s010ltr.pdf",
+                  "https://www.accessdata.fda.gov/drugsatfda_docs/label/2019/203214s024,208246s010lbl.pdf"],
+      "note": "The approval letter, signed at 5:10 PM on July 25, 2019, refers to FDA's 505(o)(4) letter of May 9, 2019 on thrombosis, pulmonary embolism and all-cause mortality with 10 mg twice daily in postmarketing study A3921133 (ORAL Surveillance). FDA announced the boxed warning in a Drug Safety Communication on July 26, 2019, so the public knew it one day after it took effect. FDA had first announced the safety signal on February 25, 2019, from interim results not yet in a journal."
+    },
+    {
+      "id": "tofacitinib-2021",
+      "subject": "tofacitinib",
+      "title": "Boxed warning revised: major adverse cardiovascular events added (S-031)",
+      "notified": "2021-08-23",
+      "announced": "2021-09-01",
+      "effective": "2021-12-02",
+      "supersedes": "tofacitinib-2019",
+      "facts": {"boxed_warning": ["serious infections", "mortality", "malignancy",
+                                 "major adverse cardiovascular events", "thrombosis"],
+                "quote": "WARNING: SERIOUS INFECTIONS, MORTALITY, MALIGNANCY, MAJOR ADVERSE CARDIOVASCULAR EVENTS, and THROMBOSIS",
+                "evidence_pmid": "35081280",
+                "evidence_first_public": "2022-01-27",
+                "signal_first_public": "2021-02-04"},
+      "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2021/203214Orig1s031ltr.pdf",
+                  "https://api.fda.gov/drug/label.json?search=openfda.generic_name:tofacitinib+AND+_exists_:boxed_warning&limit=1",
+                  "https://pubmed.ncbi.nlm.nih.gov/35081280/"],
+      "note": "The approval letter refers to FDA's 505(o)(4) letter of August 23, 2021 on major adverse cardiovascular events, malignancy, thrombosis and mortality. FDA announced the required warnings on September 1, 2021, updating its Drug Safety Communication of February 4, 2021. The ORAL Surveillance report (Ytterberg et al., N Engl J Med) appeared on January 27, 2022, after the label had changed."
     }
   ]
 }

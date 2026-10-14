@@ -10,7 +10,7 @@
 @prefix time: <http://www.w3.org/2006/time#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-# asof-kg ontology 0.2.0
+# asof-kg ontology 0.3.0
 # Versions of clinical guidelines, drug labels and surveillance case
 # definitions in valid time (when a version was in force) and knowledge time
 # (when it could be known), built on OWL-Time and PROV-O and aligned to
@@ -18,7 +18,7 @@
 
 <https://github.com/munimv2/asof-kg/ontology> a owl:Ontology ;
     rdfs:label "asof-kg: clinical knowledge versions in time"@en ;
-    owl:versionInfo "0.2.0" ;
+    owl:versionInfo "0.3.0" ;
     dcterms:creator "MV2 of Munim, Inc." ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
     rdfs:comment "Represents successive versions of clinical guidelines, drug labels and surveillance case definitions, and the intervals in which each was in force, so that queries can be answered as of any date without using knowledge that came later. Research information, not medical advice."@en .
@@ -43,7 +43,10 @@ prov:Entity a owl:Class .
 time:ProperInterval a owl:Class .
 time:Instant a owl:Class .
 
-prov:wasDerivedFrom a owl:ObjectProperty .
+prov:wasInfluencedBy a owl:ObjectProperty ;
+    obo:IAO_0000115 "Used on a label version for the published trial report the change rests on (a PubMed record). The trial's first public date is kept in the data, so the lag from evidence to label can be measured."@en .
+prov:wasDerivedFrom a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasInfluencedBy .
 prov:wasRevisionOf a owl:ObjectProperty ;
     rdfs:subPropertyOf prov:wasDerivedFrom .
 time:hasBeginning a owl:ObjectProperty .
@@ -303,7 +306,7 @@ akg:announcedOn a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:domain akg:Version ;
     rdfs:range xsd:date ;
     rdfs:label "announced on"@en ;
-    obo:IAO_0000115 "The first day the public could know the version (knowledge time, public view). It may come before the version takes effect. A coarse source date is written as the last day it could be."@en .
+    obo:IAO_0000115 "The first day the public could know the version (knowledge time, public view). It may come before the version takes effect, or after it, as when FDA announces an approved label change the next day. A coarse source date is written as the last day it could be."@en .
 
 akg:notifiedOn a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:domain akg:LabelVersion ;
