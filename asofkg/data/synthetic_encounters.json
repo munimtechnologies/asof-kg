@@ -1,0 +1,13 @@
+{
+  "about": "Made-up encounters for the demo audit. They describe no real person. 'done' means the service was given or started at the encounter; cvd_risk_10y is an assumed 10-year cardiovascular risk.",
+  "encounters": [
+    {"id": "E1", "date": "2019-03-01", "topic": "colorectal-cancer-screening", "age": 46, "done": false},
+    {"id": "E2", "date": "2022-03-01", "topic": "colorectal-cancer-screening", "age": 46, "done": false},
+    {"id": "E3", "date": "2023-05-01", "topic": "breast-cancer-screening", "age": 42, "sex": "female", "done": false},
+    {"id": "E4", "date": "2025-01-15", "topic": "breast-cancer-screening", "age": 42, "sex": "female", "done": false},
+    {"id": "E5", "date": "2018-06-01", "topic": "aspirin-primary-prevention-cvd", "age": 55, "cvd_risk_10y": 0.12, "done": false},
+    {"id": "E6", "date": "2023-01-10", "topic": "aspirin-primary-prevention-cvd", "age": 65, "cvd_risk_10y": 0.15, "done": true},
+    {"id": "E7", "date": "2007-06-01", "topic": "colorectal-cancer-screening", "age": 55, "done": false},
+    {"id": "E8", "date": "2021-05-17", "topic": "colorectal-cancer-screening", "age": 46, "done": false}
+  ]
+}

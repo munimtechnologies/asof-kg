@@ -1,0 +1,143 @@
+{
+  "about": "Successive USPSTF recommendation statements on three topics, as published versions. 'published' is the earliest public date PubMed gives (the electronic publication date when present, otherwise the issue date), checked with NCBI E-utilities on 2026-10-14. The journal may have posted some statements online a little earlier. Grades and age bands come from each statement's PubMed abstract; 'quote' fields are verbatim from the abstract. Research data, not medical advice.",
+  "topics": {
+    "colorectal-cancer-screening": {
+      "label": "Screening for colorectal cancer",
+      "condition": "MESH:D015179",
+      "condition_label": "Colorectal Neoplasms"
+    },
+    "breast-cancer-screening": {
+      "label": "Screening mammography for breast cancer",
+      "condition": "MESH:D001943",
+      "condition_label": "Breast Neoplasms",
+      "intervention": "MESH:D008327",
+      "intervention_label": "Mammography"
+    },
+    "aspirin-primary-prevention-cvd": {
+      "label": "Low-dose aspirin for primary prevention of cardiovascular disease",
+      "condition": "MESH:D002318",
+      "condition_label": "Cardiovascular Diseases",
+      "intervention": "MESH:D001241",
+      "intervention_label": "Aspirin"
+    }
+  },
+  "guidelines": [
+    {
+      "id": "crc-2008",
+      "topic": "colorectal-cancer-screening",
+      "title": "Screening for colorectal cancer: U.S. Preventive Services Task Force recommendation statement",
+      "pmid": "18838716",
+      "journal": "Ann Intern Med",
+      "published": "2008-10-06",
+      "supersedes": null,
+      "recommendations": [
+        {"grade": "A", "age_min": 50, "age_max": 75},
+        {"grade": "C", "age_min": 76, "age_max": 85},
+        {"grade": "D", "age_min": 86,
+         "quote": "recommends against screening for colorectal cancer in adults older than age 85 years. (D recommendation)"}
+      ]
+    },
+    {
+      "id": "crc-2016",
+      "topic": "colorectal-cancer-screening",
+      "title": "Screening for Colorectal Cancer: US Preventive Services Task Force Recommendation Statement",
+      "pmid": "27304597",
+      "journal": "JAMA",
+      "published": "2016-06-21",
+      "supersedes": "crc-2008",
+      "recommendations": [
+        {"grade": "A", "age_min": 50, "age_max": 75,
+         "quote": "recommends screening for colorectal cancer starting at age 50 years and continuing until age 75 years (A recommendation)"},
+        {"grade": "C", "age_min": 76, "age_max": 85}
+      ]
+    },
+    {
+      "id": "crc-2021",
+      "topic": "colorectal-cancer-screening",
+      "title": "Screening for Colorectal Cancer: US Preventive Services Task Force Recommendation Statement",
+      "pmid": "34003218",
+      "journal": "JAMA",
+      "published": "2021-05-18",
+      "supersedes": "crc-2016",
+      "recommendations": [
+        {"grade": "B", "age_min": 45, "age_max": 49},
+        {"grade": "A", "age_min": 50, "age_max": 75,
+         "quote": "The USPSTF recommends screening for colorectal cancer in all adults aged 50 to 75 years. (A recommendation)"},
+        {"grade": "C", "age_min": 76, "age_max": 85}
+      ]
+    },
+    {
+      "id": "breast-2009",
+      "topic": "breast-cancer-screening",
+      "title": "Screening for breast cancer: U.S. Preventive Services Task Force recommendation statement",
+      "pmid": "19920272",
+      "journal": "Ann Intern Med",
+      "published": "2009-11-17",
+      "supersedes": null,
+      "recommendations": [
+        {"grade": "C", "sex": "female", "age_min": 40, "age_max": 49},
+        {"grade": "B", "sex": "female", "age_min": 50, "age_max": 74},
+        {"grade": "I", "sex": "female", "age_min": 75}
+      ]
+    },
+    {
+      "id": "breast-2016",
+      "topic": "breast-cancer-screening",
+      "title": "Screening for Breast Cancer: U.S. Preventive Services Task Force Recommendation Statement",
+      "pmid": "26757170",
+      "journal": "Ann Intern Med",
+      "published": "2016-01-12",
+      "supersedes": "breast-2009",
+      "recommendations": [
+        {"grade": "C", "sex": "female", "age_min": 40, "age_max": 49},
+        {"grade": "B", "sex": "female", "age_min": 50, "age_max": 74,
+         "quote": "The USPSTF recommends biennial screening mammography for women aged 50 to 74 years. (B recommendation)"},
+        {"grade": "I", "sex": "female", "age_min": 75}
+      ]
+    },
+    {
+      "id": "breast-2024",
+      "topic": "breast-cancer-screening",
+      "title": "Screening for Breast Cancer: US Preventive Services Task Force Recommendation Statement",
+      "pmid": "38687503",
+      "journal": "JAMA",
+      "published": "2024-06-11",
+      "supersedes": "breast-2016",
+      "recommendations": [
+        {"grade": "B", "sex": "female", "age_min": 40, "age_max": 74,
+         "quote": "The USPSTF recommends biennial screening mammography for women aged 40 to 74 years. (B recommendation)"},
+        {"grade": "I", "sex": "female", "age_min": 75}
+      ]
+    },
+    {
+      "id": "aspirin-2016",
+      "topic": "aspirin-primary-prevention-cvd",
+      "title": "Aspirin Use for the Primary Prevention of Cardiovascular Disease and Colorectal Cancer: U.S. Preventive Services Task Force Recommendation Statement",
+      "pmid": "27064677",
+      "journal": "Ann Intern Med",
+      "published": "2016-04-12",
+      "supersedes": null,
+      "recommendations": [
+        {"grade": "I", "age_max": 49},
+        {"grade": "B", "age_min": 50, "age_max": 59, "min_cvd_risk_10y": 0.10,
+         "condition": "Also: not at increased risk for bleeding, life expectancy of at least 10 years, and willing to take low-dose aspirin daily for at least 10 years."},
+        {"grade": "C", "age_min": 60, "age_max": 69, "min_cvd_risk_10y": 0.10},
+        {"grade": "I", "age_min": 70}
+      ]
+    },
+    {
+      "id": "aspirin-2022",
+      "topic": "aspirin-primary-prevention-cvd",
+      "title": "Aspirin Use to Prevent Cardiovascular Disease: US Preventive Services Task Force Recommendation Statement",
+      "pmid": "35471505",
+      "journal": "JAMA",
+      "published": "2022-04-26",
+      "supersedes": "aspirin-2016",
+      "recommendations": [
+        {"grade": "C", "age_min": 40, "age_max": 59, "min_cvd_risk_10y": 0.10},
+        {"grade": "D", "age_min": 60,
+         "quote": "recommends against initiating low-dose aspirin use for the primary prevention of CVD in adults 60 years or older"}
+      ]
+    }
+  ]
+}
