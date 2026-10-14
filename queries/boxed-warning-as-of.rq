@@ -1,0 +1,26 @@
+# What did a drug's boxed warning say on ?on, using only what the public
+# knew by ?knownAt? Run it on a snapshot from
+# `python -m asofkg ttl --known-at <date>`, which already leaves out versions
+# announced after that date; ?knownAt filters again so it also works on the
+# full graph. A row with no ?risk means the label in effect then had no
+# boxed warning; no rows means no label version was known.
+PREFIX akg: <https://github.com/munimv2/asof-kg/ontology#>
+PREFIX akgd: <https://github.com/munimv2/asof-kg/data#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?version ?effective ?risk WHERE {
+  VALUES (?drug ?on ?knownAt) {
+    (akgd:montelukast "2020-04-01"^^xsd:date "2020-04-01"^^xsd:date)
+  }
+  ?version akg:versionOf ?drug ;
+           akg:effectiveFrom ?effective ;
+           akg:announcedOn ?announced .
+  FILTER (?effective <= ?on && ?announced <= ?knownAt)
+  FILTER NOT EXISTS {
+    ?newer akg:supersedes ?version ;
+           akg:effectiveFrom ?e2 ;
+           akg:announcedOn ?a2 .
+    FILTER (?e2 <= ?on && ?a2 <= ?knownAt)
+  }
+  OPTIONAL { ?version akg:boxedWarningRisk ?risk }
+}

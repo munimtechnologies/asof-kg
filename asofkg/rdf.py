@@ -12,6 +12,7 @@ PREFIXES = """@prefix akg: <https://github.com/munimv2/asof-kg/ontology#> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix pubmed: <https://pubmed.ncbi.nlm.nih.gov/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix RXNORM: <http://purl.bioontology.org/ontology/RXNORM/> .
 @prefix time: <http://www.w3.org/2006/time#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 """
@@ -25,6 +26,20 @@ def _literal(text):
 
 def _date(day):
     return '"%s"^^xsd:date' % day.isoformat()
+
+
+def _iri(url):
+    return "<%s>" % url.replace(" ", "%20").replace(">", "%3E")
+
+
+def _interval(lines, node, start, end):
+    lines.append("%s-interval a time:ProperInterval ;" % node)
+    if end is None:
+        lines.append("    time:hasBeginning [ a time:Instant ; time:inXSDDate %s ] ." % _date(start))
+    else:
+        lines.append("    time:hasBeginning [ a time:Instant ; time:inXSDDate %s ] ;" % _date(start))
+        lines.append("    time:hasEnd [ a time:Instant ; time:inXSDDate %s ] ." % _date(end))
+    lines.append("")
 
 
 def to_turtle(kg, known_at=None):
@@ -55,13 +70,7 @@ def to_turtle(kg, known_at=None):
         lines.append("    prov:wasDerivedFrom pubmed:%s ;" % v.pmid)
         lines.append("    akg:inForceDuring %s-interval ." % node)
         lines.append("")
-        lines.append("%s-interval a time:ProperInterval ;" % node)
-        if end is None:
-            lines.append("    time:hasBeginning [ a time:Instant ; time:inXSDDate %s ] ." % _date(start))
-        else:
-            lines.append("    time:hasBeginning [ a time:Instant ; time:inXSDDate %s ] ;" % _date(start))
-            lines.append("    time:hasEnd [ a time:Instant ; time:inXSDDate %s ] ." % _date(end))
-        lines.append("")
+        _interval(lines, node, start, end)
         for i, rec in enumerate(v.recommendations, 1):
             lines.append("%s-r%d a akg:Recommendation ;" % (node, i))
             lines.append("    akg:partOfGuideline %s ;" % node)
@@ -90,5 +99,65 @@ def to_turtle(kg, known_at=None):
         if info.get("condition"):
             lines.append("%s a biolink:Disease ; rdfs:label %s@en ." % (
                 info["condition"], _literal(info.get("condition_label", info["condition"]))))
+            lines.append("")
+    return "\n".join(lines)
+
+
+def versions_to_turtle(chains, known_at=None, view="public", prefixes=True):
+    """Turtle for every label or case-definition version known by ``known_at`` in ``view``.
+
+    The interval of a version ends only once a successor is known; the end
+    may lie after ``known_at`` when the successor was announced ahead of
+    taking effect. Sponsor-only notification dates are written only in the
+    "sponsor" view.
+    """
+    known_at = dt.date.max if known_at is None else as_date(known_at)
+    lines = [PREFIXES] if prefixes else []
+    if known_at != dt.date.max:
+        lines.append("# Snapshot (%s view): only what was known by %s.\n" % (view, known_at.isoformat()))
+    subjects = []
+    for v in chains.versions:
+        span = chains.interval(v.id, known_at, view)
+        if span is None:
+            continue
+        if v.subject not in subjects:
+            subjects.append(v.subject)
+        start, end = span
+        node = "akgd:" + v.id
+        lines.append("%s a akg:%s ;" % (node, chains.kind))
+        lines.append("    rdfs:label %s@en ;" % _literal(v.title))
+        lines.append("    akg:versionOf akgd:%s ;" % v.subject)
+        lines.append("    akg:announcedOn %s ;" % _date(v.announced.latest))
+        if view == "sponsor" and v.notified is not None:
+            lines.append("    akg:notifiedOn %s ;" % _date(v.notified.latest))
+        lines.append("    akg:effectiveFrom %s ;" % _date(v.effective.latest))
+        if v.supersedes in chains.by_id:
+            lines.append("    akg:supersedes akgd:%s ;" % v.supersedes)
+        for risk in v.facts.get("boxed_warning", []):
+            lines.append("    akg:boxedWarningRisk %s@en ;" % _literal(risk))
+        if "boxed_warning" in v.facts and not v.facts["boxed_warning"]:
+            lines.append("    a akg:LabelVersionWithoutBoxedWarning ;")
+        if v.facts.get("position_statement"):
+            lines.append("    akg:positionStatement %s ;" % _literal(v.facts["position_statement"]))
+        for url in v.sources:
+            lines.append("    prov:wasDerivedFrom %s ;" % _iri(url))
+        lines.append("    akg:inForceDuring %s-interval ." % node)
+        lines.append("")
+        _interval(lines, node, start, end)
+
+    for subject in subjects:
+        info = chains.subject_info.get(subject, {})
+        lines.append("akgd:%s a akg:VersionedSubject ;" % subject)
+        if info.get("rxcui"):
+            lines.append("    akg:aboutDrug RXNORM:%s ;" % info["rxcui"])
+        if info.get("condition"):
+            lines.append("    akg:aboutCondition %s ;" % info["condition"])
+        lines.append("    rdfs:label %s@en ." % _literal(info.get("label", subject)))
+        lines.append("")
+        if info.get("rxcui"):
+            lines.append("RXNORM:%s a biolink:Drug ." % info["rxcui"])
+            lines.append("")
+        if info.get("condition"):
+            lines.append("%s a biolink:Disease ." % info["condition"])
             lines.append("")
     return "\n".join(lines)

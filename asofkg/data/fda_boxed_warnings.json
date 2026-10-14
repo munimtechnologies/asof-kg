@@ -1,0 +1,121 @@
+{
+  "about": "Boxed-warning history of three US drug labels, as versions. 'effective' is the date FDA approved the labeling change (the approval letter says it is effective on the letter's date). 'notified' is the date of FDA's letter to the sponsor under FDCA section 505(o)(4), known then only to FDA and the sponsor; it is taken from the later approval letter. 'announced' is the first public date (FDA announcement or news release); when absent, the change is treated as public from its approval. Each first version is the original approval, whose label had no boxed warning. Dates and wording were checked on 2026-10-14 against FDA approval letters on Drugs@FDA (accessdata.fda.gov) and current labels in openFDA. Only boxed warnings are tracked here, not other label sections. Research data, not medical advice.",
+  "kind": "LabelVersion",
+  "subjects": {
+    "levofloxacin": {"label": "levofloxacin (Levaquin, NDA 020634)", "rxcui": "82122"},
+    "varenicline": {"label": "varenicline (Chantix, NDA 021928)", "rxcui": "591622"},
+    "montelukast": {"label": "montelukast (Singulair, NDA 020829)", "rxcui": "88249"}
+  },
+  "versions": [
+    {
+      "id": "levofloxacin-1996",
+      "subject": "levofloxacin",
+      "title": "Levaquin original approval (NDA 020634, ORIG-1)",
+      "effective": "1996-12-20",
+      "supersedes": null,
+      "facts": {"boxed_warning": []},
+      "sources": ["https://www.accessdata.fda.gov/scripts/cder/daf/index.cfm?event=overview.process&ApplNo=020634"]
+    },
+    {
+      "id": "levofloxacin-2008",
+      "subject": "levofloxacin",
+      "title": "Boxed warning added: tendinitis and tendon rupture (S-052)",
+      "notified": "2008-07-07",
+      "announced": "2008-07-08",
+      "effective": "2008-10-03",
+      "supersedes": "levofloxacin-1996",
+      "facts": {"boxed_warning": ["tendinitis and tendon rupture"],
+                "quote": "A Boxed Warning with bolded font and enclosed in a black box was added"},
+      "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2008/020634s052,%20020635s057,021721s020ltr%20.pdf"],
+      "note": "The approval letter refers to FDA's 505(o)(4) letter of July 7, 2008. FDA announced the class-wide boxed warning request on July 8, 2008."
+    },
+    {
+      "id": "levofloxacin-2011",
+      "subject": "levofloxacin",
+      "title": "Boxed warning extended: exacerbation of myasthenia gravis (S-058)",
+      "notified": "2010-11-15",
+      "effective": "2011-02-25",
+      "supersedes": "levofloxacin-2008",
+      "facts": {"boxed_warning": ["tendinitis and tendon rupture", "exacerbation of myasthenia gravis"],
+                "quote": "may exacerbate muscle weakness in persons with myasthenia gravis"},
+      "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2011/020634s058,020635s064,021721s025ltr.pdf"],
+      "note": "Treated as public from its approval; the 505(o)(4) letter of November 15, 2010 was known to FDA and the sponsor."
+    },
+    {
+      "id": "levofloxacin-2016",
+      "subject": "levofloxacin",
+      "title": "Boxed warning revised: disabling and potentially irreversible serious adverse reactions (S-067)",
+      "notified": "2016-05-12",
+      "announced": "2016-05-12",
+      "effective": "2016-07-26",
+      "supersedes": "levofloxacin-2011",
+      "facts": {"boxed_warning": ["disabling and potentially irreversible serious adverse reactions",
+                                 "tendinitis and tendon rupture", "peripheral neuropathy",
+                                 "central nervous system effects", "exacerbation of myasthenia gravis"],
+                "quote": "the Boxed Warning ... revised to include information regarding the risk of disabling and potentially irreversible serious adverse reactions"},
+      "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2016/020634s067_020635s073_021721Orig1s034ltr.pdf",
+                  "https://api.fda.gov/drug/label.json?search=openfda.generic_name:levofloxacin+AND+_exists_:boxed_warning&limit=1"],
+      "note": "FDA's Drug Safety Communication of May 12, 2016 announced the change publicly the same day as the 505(o)(4) letter. The list of risks is the boxed warning of current levofloxacin labels in openFDA (checked 2026-10-14)."
+    },
+    {
+      "id": "varenicline-2006",
+      "subject": "varenicline",
+      "title": "Chantix original approval (NDA 021928, ORIG-1)",
+      "effective": "2006-05-10",
+      "supersedes": null,
+      "facts": {"boxed_warning": []},
+      "sources": ["https://www.accessdata.fda.gov/scripts/cder/daf/index.cfm?event=overview.process&ApplNo=021928"]
+    },
+    {
+      "id": "varenicline-2009",
+      "subject": "varenicline",
+      "title": "Boxed warning added: serious neuropsychiatric events (S-012/S-013)",
+      "notified": "2009-02-19",
+      "announced": "2009-07-01",
+      "effective": "2009-07-01",
+      "supersedes": "varenicline-2006",
+      "facts": {"boxed_warning": ["serious neuropsychiatric events"],
+                "quote": "addition of a new BOXED WARNING to the package insert"},
+      "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2009/021928s012,s013ltr.pdf"],
+      "note": "FDA's 505(o)(4) letter of February 19, 2009 concerned suicidality-related events. FDA announced the boxed warning on July 1, 2009, the day it approved the labeling."
+    },
+    {
+      "id": "varenicline-2016",
+      "subject": "varenicline",
+      "title": "Boxed warning removed after the EAGLES trial (S-040)",
+      "announced": "2016-12-16",
+      "effective": "2016-12-16",
+      "supersedes": "varenicline-2009",
+      "facts": {"boxed_warning": [],
+                "evidence_pmid": "27116918",
+                "evidence_first_public": "2016-04-22"},
+      "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2016/021928Orig1s040ltr.pdf",
+                  "https://www.businesswire.com/news/home/20161216005682/en/",
+                  "https://pubmed.ncbi.nlm.nih.gov/27116918/"],
+      "note": "Pfizer's supplement of February 18, 2016 proposed the change on the basis of EAGLES (Anthenelli et al., Lancet, e-published April 22, 2016). FDA approved it on December 16, 2016; Pfizer announced the removal that day."
+    },
+    {
+      "id": "montelukast-1998",
+      "subject": "montelukast",
+      "title": "Singulair original approval (NDA 020829, ORIG-1)",
+      "effective": "1998-02-20",
+      "supersedes": null,
+      "facts": {"boxed_warning": []},
+      "sources": ["https://www.accessdata.fda.gov/scripts/cder/daf/index.cfm?event=overview.process&ApplNo=020829"]
+    },
+    {
+      "id": "montelukast-2020",
+      "subject": "montelukast",
+      "title": "Boxed warning added: serious neuropsychiatric events (S-073)",
+      "notified": "2020-03-04",
+      "announced": "2020-03-04",
+      "effective": "2020-04-29",
+      "supersedes": "montelukast-1998",
+      "facts": {"boxed_warning": ["serious neuropsychiatric events"],
+                "quote": "WARNING: SERIOUS NEUROPSYCHIATRIC EVENTS"},
+      "sources": ["https://www.accessdata.fda.gov/drugsatfda_docs/appletter/2020/020829Orig1s073,%20020830Orig1s075,%20021409Orig1s051ltr.pdf",
+                  "https://api.fda.gov/drug/label.json?search=openfda.generic_name:montelukast+AND+_exists_:boxed_warning&limit=1"],
+      "note": "FDA's Safety Labeling Change Notification Letter and its public Drug Safety Communication are both dated March 4, 2020; the labeling was approved on April 29, 2020."
+    }
+  ]
+}

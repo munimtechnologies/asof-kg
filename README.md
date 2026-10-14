@@ -1,35 +1,41 @@
-# asof-kg: clinical guidelines as they stood on any date
+# asof-kg: clinical knowledge as it stood on any date
 
-Most medical knowledge graphs store facts with no time attached. They cannot tell "what is recommended now" from "what was recommended when the patient was seen", and they quietly use knowledge published later. asof-kg is a small, open prototype that keeps both times:
+Most medical knowledge graphs store facts with no time attached. They cannot tell "what is recommended now" from "what was recommended when the patient was seen", and they quietly use knowledge published later. asof-kg is a small, open prototype that keeps the times apart:
 
-- **Valid time:** when a guideline version was in force.
-- **Knowledge time:** when a fact could first be known. A version is known from its publication date. The *end* of its time in force is known only once a successor has been published.
+- **Valid time:** when a version (of a guideline, a drug label or a case definition) was in force.
+- **Knowledge time:** when it could first be known. The *end* of a version's time in force is known only once its successor is known.
+- **Whose knowledge:** the public, or the regulator and the product's sponsor, who often know of a required label change months before it is announced.
 
-Every query takes a `known_at` date and never uses anything published after it. Version 0.1.0, 2026-10-14.
+Every query takes a `known_at` date and never uses anything known after it. Version 0.2.0, 2026-10-14.
 
-> **Not medical advice.** This is research software and research data. It does not tell anyone what care to get. Ask a clinician.
+> **Not medical advice.** This is research software and research data. It does not tell anyone what care to get or which medicine to take. Ask a clinician or pharmacist.
 
 ## What's in it
 | Path | What it is |
 |---|---|
 | `asofkg/` | Python 3.7+ package, standard library only: as-of queries, consistency checks, Turtle export, CLI |
-| `asofkg/data/uspstf.json` | 8 USPSTF recommendation statements on 3 topics (2008-2024), each with its PMID |
-| `asofkg/data/synthetic_encounters.json` | 8 made-up encounters for the demo audit (no real people) |
-| `ontology/asofkg.ttl` | OWL 2 ontology built on OWL-Time and PROV-O, aligned to Biolink, MeSH and PATO |
+| `asofkg/data/uspstf.json` | Care pathways: 8 USPSTF recommendation statements on 3 topics (2008-2024), each with its PMID |
+| `asofkg/data/fda_boxed_warnings.json` | Pharmacovigilance: boxed-warning history of levofloxacin, varenicline and montelukast (9 label versions, 1996-2020), each from FDA approval letters |
+| `asofkg/data/cdc_case_definitions.json` | Infectious-disease surveillance: CDC/CSTE Lyme disease case definitions 2011, 2017 and 2022 |
+| `asofkg/data/synthetic_*.json` | Made-up encounters and prescription fills for the demos (no real people) |
+| `ontology/asofkg.ttl` | OWL 2 ontology built on OWL-Time and PROV-O, aligned to Biolink, MeSH, PATO and RxNorm |
 | `shapes/asofkg-shapes.ttl` | SHACL rules for temporal consistency that OWL cannot express |
-| `queries/*.rq` | SPARQL competency queries (as-of version, recommendation for a person) |
+| `queries/*.rq` | SPARQL competency queries |
 | `test_asofkg.py` | unittest suite |
 
 ## Run it
 ```
-python -m asofkg demo --known-at 2026-10-13   # care-gap audit: in force then vs newest only
-python -m asofkg check                        # consistency report
-python -m asofkg ttl --known-at 2018-01-01    # the graph as it could be known on that date
-python -m unittest test_asofkg                # tests
+python -m asofkg demo --known-at 2026-10-13     # care-gap audit: in force then vs newest only
+python -m asofkg labels --known-at 2026-10-13   # boxed-warning audit: on the label then vs newest only
+python -m asofkg check                          # consistency report for all three datasets
+python -m asofkg ttl --known-at 2018-01-01      # the graph as it could be known on that date
+python -m asofkg ttl --known-at 2009-03-01 --view sponsor   # ...as FDA and the sponsor knew it
+python -m unittest test_asofkg                  # tests
 ```
 
-## What the demo shows
-A care-gap audit asks whether a recommended service was missed at a past visit. Done with time, it applies the version in force on the visit date. Done without time, it applies the newest version to every visit. The tests pin these verdicts for the synthetic encounters (all "not done" except E6):
+## Three domains, one time model
+### Care pathways: USPSTF guideline versions
+A care-gap audit asks whether a recommended service was missed at a past visit. Done with time, it applies the version in force on the visit date. Done without time, it applies the newest version to every visit. For the 8 synthetic encounters, **5 of 8 verdicts change** when time is ignored, in both directions:
 
 | Encounter | Visit | In force then | Newest version only |
 |---|---|---|---|
@@ -39,33 +45,59 @@ A care-gap audit asks whether a recommended service was missed at a past visit. 
 | E7: colorectal, age 55 | 2007-06-01 | unknown (no version in this graph yet) | gap (grade A, 2021) |
 | E8: colorectal, age 46 | 2021-05-17 | no recommendation (one day before the 2021 statement) | gap (grade B, 2021) |
 
-So 5 of the 8 verdicts change when time is ignored, in both directions: false gaps (E1, E3, E8) and a missed gap (E5).
+### Pharmacovigilance: drug-label boxed warnings
+A label change has three dates. FDA writes to the sponsor (an FDCA 505(o)(4) letter), often announces the change, and approves the new label later. Every date below is from FDA's approval letters on Drugs@FDA:
+
+| Drug | Sponsor notified | Public | Label changed | Boxed warning after |
+|---|---|---|---|---|
+| levofloxacin | 2008-07-07 | 2008-07-08 | 2008-10-03 | tendinitis and tendon rupture |
+| levofloxacin | 2010-11-15 | 2011-02-25 (no earlier public notice found) | 2011-02-25 | + exacerbation of myasthenia gravis |
+| levofloxacin | 2016-05-12 | 2016-05-12 | 2016-07-26 | revised: disabling and potentially irreversible reactions, incl. peripheral neuropathy and CNS effects |
+| varenicline | 2009-02-19 | 2009-07-01 | 2009-07-01 | serious neuropsychiatric events |
+| varenicline | (sponsor-proposed) | 2016-12-16 | 2016-12-16 | **removed** after the EAGLES trial (PMID 27116918, online 2016-04-22) |
+| montelukast | 2020-03-04 | 2020-03-04 | 2020-04-29 | serious neuropsychiatric events |
+
+For 8 synthetic prescription fills, **7 of 8 boxed-warning answers change** when only the newest label is used. On 2020-04-01, for example, montelukast's label had no boxed warning yet, but one had been announced on 2020-03-04: asof-kg reports both, and the old label's end date became known 8 weeks before it happened.
+
+**A stale copy in public data.** On 2026-10-14 openFDA's drug label endpoint still served a repackager's Chantix (varenicline) label (set id 0fefd790-b526-4f2f-8c83-5f39f7306556, version 4, effective 2020-02-01) with the neuropsychiatric boxed warning that FDA approved removing on 2016-12-16. A graph built from it without time would assert a warning that was no longer in force. `check_copy()` flags such copies:
+
+```
+>>> check_copy(load_labels(), "varenicline", "2020-02-01", copy_has_box=True)
+{'expected': 'varenicline-2016', 'consistent': False, 'older': ['varenicline-2009']}
+```
+
+### Surveillance: case-definition versions
+CSTE adopts a case definition in one year and CDC uses it from the next surveillance year, so here a version is known *before* it takes effect. The 2022 Lyme disease definition (position statement 21-ID-05, spring 2021) changed classification for high-incidence jurisdictions. From mid-2021 a query knows the 2017 definition will end on 2022-01-01; before that, its end is open.
 
 ## How time is handled
-- **No hindsight:** `in_force(topic, on, known_at)` sees only versions published by `known_at`. `interval(version, known_at)` leaves the end open until a successor is published. In 2018 the 2016 colorectal statement has no known end; from 2021-05-18 on, it ends that day. A test sweeps 2008-2026 to check that no answer uses a later source.
-- **Coarse dates:** a date given only as a year or month counts as known only once its latest possible day has passed (`Instant`).
+- **No hindsight:** queries see only versions known by `known_at`. An interval's end is written only once a successor is known. Tests sweep 1996-2026 to check that no answer uses a later source.
+- **Coarse dates:** a date given only as a year or month counts as known only once its latest possible day has passed (`Instant`). The Lyme 2017 definition, adopted in "2016", is known from 2016-12-31.
+- **Views:** `view="sponsor"` uses the regulator's notice date as knowledge time; `view="public"` uses the announcement.
 - **Interval algebra:** `allen()` gives all 13 Allen relations. Consecutive versions must *meet*, and the tests check that.
-- **Consistency:** `check()` and the SHACL shapes flag versions published before the one they replace, supersession cycles and branches, cross-topic supersession, overlapping age bands, and interval ends asserted before any successor exists.
+- **Consistency:** `check()` and the SHACL shapes flag versions that start before the one they replace, cycles, branches, cross-subject supersession, overlapping age bands, notices dated after announcements, and interval ends asserted before any successor exists.
 
 ## Ontology notes
-- `akg:GuidelineVersion` ⊑ `biolink:Publication`, `prov:Entity`. `akg:Recommendation` ⊑ `biolink:Association`. Conditions are MeSH terms typed `biolink:Disease`, and sex uses PATO.
+- `akg:Version` has three subclasses: `GuidelineVersion` (⊑ `biolink:Publication`), `LabelVersion` and `CaseDefinitionVersion` (⊑ `biolink:InformationContentEntity`). They are pairwise disjoint.
 - `akg:supersedes` is asymmetric and irreflexive, and is a sub-property of `prov:wasRevisionOf` and of the transitive `akg:laterVersionOf`.
-- `akg:validDuring` is inferred by a property chain (`partOfGuideline` ∘ `inForceDuring`). `RoutineRecommendation` and `RecommendationAgainst` are defined classes that a reasoner fills in from the grade.
+- `akg:validDuring` is inferred by a property chain (`partOfGuideline` ∘ `inForceDuring`). `RoutineRecommendation`, `RecommendationAgainst` and `LabelVersionWithBoxedWarning` are defined classes a reasoner fills in. `LabelVersionWithoutBoxedWarning` states "no boxed warning" explicitly, since under the open-world assumption a missing risk is not the same as no risk.
+- `effectiveFrom`, `announcedOn` and `notifiedOn` hold valid time and the two knowledge times. `notifiedOn` is written only in sponsor-view snapshots.
+- Drugs are RxNorm ingredients typed `biolink:Drug`; conditions are MeSH terms typed `biolink:Disease`; sex uses PATO.
 - Biolink's `temporal_interval_qualifier` is string-valued, so it cannot point at an OWL-Time interval. `akg:inForceDuring` carries the interval and maps to it with `skos:relatedMatch`.
 - Dates use `xsd:date`, as OWL-Time's `time:inXSDDate` does. Some OWL 2 DL reasoners need their "ignore unsupported datatypes" option for it.
 
 ## Data sources and limits
-- Grades, age bands and dates come from PubMed records (NCBI E-utilities, checked 2026-10-14). The `published` date is PubMed's earliest public date (electronic publication if present, else issue date). The journal sometimes posted a statement online earlier, so a boundary may be a few weeks off.
-- Only 3 topics and 8 versions so far. Conditions attached to a grade (bleeding risk, life expectancy, and so on) are kept as notes, not modelled.
-- The ontology and SHACL shapes have not yet been run through an OWL reasoner or SHACL engine. That is the next step.
+- USPSTF grades, age bands and dates come from PubMed records (NCBI E-utilities). The `published` date is PubMed's earliest public date, so a boundary may be a few weeks off.
+- Label dates come from FDA approval letters; the current wording of each boxed warning from openFDA. Only boxed warnings are tracked, not other label sections, and only three drugs so far.
+- Lyme disease versions before 2011 are not included yet. Case definitions are dated by CDC's version year; surveillance years follow MMWR weeks, which start within a few days of January 1.
+- The ontology and SHACL shapes have not yet been run through an OWL reasoner or a SHACL engine. That is the next step.
 
 ## Next
-- Pharmacovigilance: drug-label safety changes (boxed warnings added and removed) as versions with knowledge time.
-- Evolving evidence: trial results and meta-analyses entering over time, with an as-of evidence summary.
+- Evidence that evolves: trial results and meta-analyses entering over time, with an as-of evidence summary (the EAGLES-to-label lag is the first example).
 - KGX export for Translator tools, and reasoner/SHACL validation in CI.
+- More drugs (openFDA label history) and more conditions (NNDSS case definitions).
 
 Issues and corrections are welcome.
 
 ## License, credits and contact
 - Code: MIT. Data, ontology and documentation: CC BY 4.0.
-- Made by MV2 of Munim, Inc. The work was done with AI agents (Claude) working in his name, and every figure was checked against the cited PubMed record. Contact: munimversion2@gmail.com.
+- Made by MV2 of Munim, Inc. The work was done with AI agents (Claude) working in his name, and every date was checked against the cited FDA, CDC or PubMed record. Contact: munimversion2@gmail.com.

@@ -5,7 +5,7 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 # Temporal consistency rules that OWL alone cannot state, as SHACL.
-# Run against the output of `python -m asofkg ttl` (any --known-at snapshot).
+# Run against the output of `python -m asofkg ttl` (any --known-at snapshot, either --view).
 
 <https://github.com/munimv2/asof-kg/shapes> a owl:Ontology ;
     sh:declare [ sh:prefix "akg" ; sh:namespace "https://github.com/munimv2/asof-kg/ontology#"^^xsd:anyURI ] ,
@@ -74,6 +74,91 @@ akg:GuidelineVersionShape a sh:NodeShape ;
     ] , [
         a sh:SPARQLConstraint ;
         sh:message "An interval may end only when a known successor begins (no end asserted ahead of its evidence)." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this akg:inForceDuring/time:hasEnd/time:inXSDDate ?value .
+                FILTER NOT EXISTS { ?newer akg:supersedes $this }
+            }"""
+    ] .
+
+# Label and case-definition versions: effective (valid time) and announced
+# (knowledge time) are separate dates, so the rules are stated on effectiveFrom.
+akg:EffectiveVersionShape a sh:NodeShape ;
+    sh:targetClass akg:LabelVersion , akg:CaseDefinitionVersion ;
+    sh:property [ sh:path akg:effectiveFrom ; sh:datatype xsd:date ; sh:minCount 1 ; sh:maxCount 1 ] ,
+                [ sh:path akg:announcedOn ; sh:datatype xsd:date ; sh:minCount 1 ; sh:maxCount 1 ] ,
+                [ sh:path akg:notifiedOn ; sh:datatype xsd:date ; sh:maxCount 1 ] ,
+                [ sh:path akg:versionOf ; sh:class akg:VersionedSubject ; sh:minCount 1 ; sh:maxCount 1 ] ,
+                [ sh:path akg:inForceDuring ; sh:class time:ProperInterval ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "A version must take effect after the version it supersedes." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this akg:supersedes ?value ;
+                      akg:effectiveFrom ?new .
+                ?value akg:effectiveFrom ?old .
+                FILTER (?new <= ?old)
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "A version and the version it supersedes must be versions of the same subject." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this akg:supersedes ?value ;
+                      akg:versionOf ?s1 .
+                ?value akg:versionOf ?s2 .
+                FILTER (?s1 != ?s2)
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "Two versions must not supersede the same version." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                ?value akg:supersedes $this .
+                ?other akg:supersedes $this .
+                FILTER (?value != ?other)
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "The regulator's notice to the sponsor cannot come after the public announcement." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this akg:notifiedOn ?value ;
+                      akg:announcedOn ?a .
+                FILTER (?value > ?a)
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "A version's interval must begin on its effective date." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this akg:effectiveFrom ?e ;
+                      akg:inForceDuring/time:hasBeginning/time:inXSDDate ?value .
+                FILTER (?value != ?e)
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "Once a successor is known, the superseded version's interval must end on the successor's effective date." ;
+        sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                ?newer akg:supersedes $this ;
+                       akg:effectiveFrom ?value .
+                FILTER NOT EXISTS {
+                    $this akg:inForceDuring/time:hasEnd/time:inXSDDate ?end .
+                    FILTER (?end = ?value)
+                }
+            }"""
+    ] , [
+        a sh:SPARQLConstraint ;
+        sh:message "An interval may end only when a known successor takes effect (no end asserted ahead of its evidence)." ;
         sh:prefixes <https://github.com/munimv2/asof-kg/shapes> ;
         sh:select """
             SELECT $this ?value WHERE {

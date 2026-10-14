@@ -10,17 +10,18 @@
 @prefix time: <http://www.w3.org/2006/time#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-# asof-kg ontology 0.1.0
-# Guideline versions in valid time (when a version was in force) and knowledge
-# time (when it could be known), built on OWL-Time and PROV-O and aligned to
+# asof-kg ontology 0.2.0
+# Versions of clinical guidelines, drug labels and surveillance case
+# definitions in valid time (when a version was in force) and knowledge time
+# (when it could be known), built on OWL-Time and PROV-O and aligned to
 # Biolink. Instance data comes from `python -m asofkg ttl`.
 
 <https://github.com/munimv2/asof-kg/ontology> a owl:Ontology ;
-    rdfs:label "asof-kg: clinical guideline versions in time"@en ;
-    owl:versionInfo "0.1.0" ;
+    rdfs:label "asof-kg: clinical knowledge versions in time"@en ;
+    owl:versionInfo "0.2.0" ;
     dcterms:creator "MV2 of Munim, Inc." ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
-    rdfs:comment "Represents successive versions of clinical guidelines, the graded recommendations inside them, and the intervals in which each was in force, so that queries can be answered as of any date without using knowledge published later. Research information, not medical advice."@en .
+    rdfs:comment "Represents successive versions of clinical guidelines, drug labels and surveillance case definitions, and the intervals in which each was in force, so that queries can be answered as of any date without using knowledge that came later. Research information, not medical advice."@en .
 
 #################################################################
 # Terms reused from other vocabularies (declared, not imported)
@@ -34,8 +35,10 @@ obo:IAO_0000115 a owl:AnnotationProperty ; rdfs:label "definition"@en .
 
 biolink:Association a owl:Class .
 biolink:Publication a owl:Class .
+biolink:InformationContentEntity a owl:Class .
 biolink:ClinicalIntervention a owl:Class .
 biolink:Disease a owl:Class .
+biolink:Drug a owl:Class .
 prov:Entity a owl:Class .
 time:ProperInterval a owl:Class .
 time:Instant a owl:Class .
@@ -52,13 +55,26 @@ obo:BFO_0000050 a owl:ObjectProperty ; rdfs:label "part of"@en .
 # Classes
 #################################################################
 
+akg:Version a owl:Class ;
+    rdfs:subClassOf prov:Entity ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:inForceDuring ;
+          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+          owl:onClass time:ProperInterval ] ;
+    rdfs:label "version"@en ;
+    obo:IAO_0000115 "One version of a record that changes over time, such as a guideline, a drug label or a case definition. It is in force during one interval, which ends where the version that supersedes it begins."@en .
+
+akg:VersionedSubject a owl:Class ;
+    rdfs:label "versioned subject"@en ;
+    obo:IAO_0000115 "What a chain of versions is about, such as one drug's label or one condition's surveillance case definition."@en .
+
 akg:PreventiveServiceTopic a owl:Class ;
     rdfs:subClassOf biolink:ClinicalIntervention ;
     rdfs:label "preventive service topic"@en ;
     obo:IAO_0000115 "A preventive service that a guideline body issues successive recommendation statements about, such as screening for colorectal cancer."@en .
 
 akg:GuidelineVersion a owl:Class ;
-    rdfs:subClassOf biolink:Publication , prov:Entity ,
+    rdfs:subClassOf akg:Version , biolink:Publication ,
         [ a owl:Restriction ;
           owl:onProperty akg:topic ;
           owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
@@ -67,14 +83,45 @@ akg:GuidelineVersion a owl:Class ;
           owl:onProperty akg:publishedOn ;
           owl:cardinality "1"^^xsd:nonNegativeInteger ] ,
         [ a owl:Restriction ;
-          owl:onProperty akg:inForceDuring ;
-          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
-          owl:onClass time:ProperInterval ] ,
-        [ a owl:Restriction ;
           owl:onProperty prov:wasDerivedFrom ;
           owl:minCardinality "1"^^xsd:nonNegativeInteger ] ;
     rdfs:label "guideline version"@en ;
     obo:IAO_0000115 "One published version of a guideline on one topic. It is in force from its publication until a version that supersedes it is published."@en .
+
+akg:LabelVersion a owl:Class ;
+    rdfs:subClassOf akg:Version , biolink:InformationContentEntity ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:versionOf ;
+          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+          owl:onClass akg:VersionedSubject ] ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:effectiveFrom ;
+          owl:cardinality "1"^^xsd:nonNegativeInteger ] ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:announcedOn ;
+          owl:cardinality "1"^^xsd:nonNegativeInteger ] ;
+    rdfs:label "drug label version"@en ;
+    obo:IAO_0000115 "The safety content of a drug's approved labeling from one approval until the next. It takes effect on approval; it may be announced earlier, and the regulator and sponsor may know it earlier still."@en .
+
+akg:LabelVersionWithoutBoxedWarning a owl:Class ;
+    rdfs:subClassOf akg:LabelVersion ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:boxedWarningRisk ;
+          owl:maxCardinality "0"^^xsd:nonNegativeInteger ] ;
+    rdfs:label "label version without boxed warning"@en ;
+    obo:IAO_0000115 "A label version stated to carry no boxed warning. Stated explicitly because, under the open-world assumption, a missing risk is not the same as no risk."@en .
+
+akg:CaseDefinitionVersion a owl:Class ;
+    rdfs:subClassOf akg:Version , biolink:InformationContentEntity ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:versionOf ;
+          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+          owl:onClass akg:VersionedSubject ] ,
+        [ a owl:Restriction ;
+          owl:onProperty akg:effectiveFrom ;
+          owl:cardinality "1"^^xsd:nonNegativeInteger ] ;
+    rdfs:label "surveillance case definition version"@en ;
+    obo:IAO_0000115 "One version of a public-health surveillance case definition. It is adopted in one year and used for cases from the start of a later surveillance year."@en .
 
 akg:Recommendation a owl:Class ;
     rdfs:subClassOf biolink:Association , prov:Entity ,
@@ -120,8 +167,21 @@ akg:RecommendationAgainst a owl:Class ;
             [ a owl:Restriction ; owl:onProperty akg:hasGrade ; owl:someValuesFrom akg:AgainstGrade ] ) ] ;
     rdfs:label "recommendation against"@en .
 
+akg:LabelVersionWithBoxedWarning a owl:Class ;
+    owl:equivalentClass [ a owl:Class ;
+        owl:intersectionOf ( akg:LabelVersion
+            [ a owl:Restriction ; owl:onProperty akg:boxedWarningRisk ;
+              owl:minCardinality "1"^^xsd:nonNegativeInteger ] ) ] ;
+    rdfs:label "label version with boxed warning"@en ;
+    obo:IAO_0000115 "A label version a reasoner classifies as carrying a boxed warning because at least one boxed-warning risk is stated."@en .
+
 [] a owl:AllDisjointClasses ;
-    owl:members ( akg:PreventiveServiceTopic akg:GuidelineVersion akg:Recommendation akg:Grade ) .
+    owl:members ( akg:PreventiveServiceTopic akg:GuidelineVersion akg:Recommendation akg:Grade akg:VersionedSubject ) .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( akg:GuidelineVersion akg:LabelVersion akg:CaseDefinitionVersion ) .
+
+akg:Version owl:disjointWith akg:VersionedSubject .
 
 #################################################################
 # Grades
@@ -159,25 +219,30 @@ akg:topic a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:range akg:PreventiveServiceTopic ;
     rdfs:label "topic"@en .
 
+akg:versionOf a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:Version ;
+    rdfs:range akg:VersionedSubject ;
+    rdfs:label "version of"@en .
+
 akg:supersedes a owl:ObjectProperty , owl:AsymmetricProperty , owl:IrreflexiveProperty ;
     rdfs:subPropertyOf prov:wasRevisionOf , akg:laterVersionOf ;
-    rdfs:domain akg:GuidelineVersion ;
-    rdfs:range akg:GuidelineVersion ;
+    rdfs:domain akg:Version ;
+    rdfs:range akg:Version ;
     rdfs:label "supersedes"@en ;
-    obo:IAO_0000115 "The newer version replaces the older one from the newer one's publication date. The older version's interval ends where the newer one's begins (OWL-Time intervalMeets); SHACL shapes in shapes/ check this."@en .
+    obo:IAO_0000115 "The newer version replaces the older one from the newer one's start. The older version's interval ends where the newer one's begins (OWL-Time intervalMeets); SHACL shapes in shapes/ check this."@en .
 
 akg:laterVersionOf a owl:ObjectProperty , owl:TransitiveProperty ;
-    rdfs:domain akg:GuidelineVersion ;
-    rdfs:range akg:GuidelineVersion ;
+    rdfs:domain akg:Version ;
+    rdfs:range akg:Version ;
     rdfs:label "later version of"@en ;
     obo:IAO_0000115 "Transitive closure of supersedes: any earlier version in the same chain."@en .
 
 akg:inForceDuring a owl:ObjectProperty , owl:FunctionalProperty ;
-    rdfs:domain akg:GuidelineVersion ;
+    rdfs:domain akg:Version ;
     rdfs:range time:ProperInterval ;
     skos:relatedMatch biolink:temporal_interval_qualifier ;
     rdfs:label "in force during"@en ;
-    obo:IAO_0000115 "The valid-time interval in which a version was in force. An interval with no time:hasEnd is open as far as the graph knows: its end is asserted only once a superseding version is published, so snapshots never contain an end that was unknowable at the snapshot date. Biolink's temporal_interval_qualifier is string-valued and cannot point at an OWL-Time interval, so this object property carries the interval and is mapped to it."@en .
+    obo:IAO_0000115 "The valid-time interval in which a version was in force. An interval with no time:hasEnd is open as far as the graph knows: its end is asserted only once a superseding version is known, so snapshots never contain an end that was unknowable at the snapshot date. Biolink's temporal_interval_qualifier is string-valued and cannot point at an OWL-Time interval, so this object property carries the interval and is mapped to it."@en .
 
 akg:partOfGuideline a owl:ObjectProperty , owl:FunctionalProperty ;
     rdfs:subPropertyOf obo:BFO_0000050 ;
@@ -203,9 +268,15 @@ akg:sex a owl:ObjectProperty , owl:FunctionalProperty ;
     obo:IAO_0000115 "The sex the recommendation applies to, as a PATO term (PATO:0000383 female, PATO:0000384 male). Absent when it applies to everyone."@en .
 
 akg:aboutCondition a owl:ObjectProperty ;
-    rdfs:domain akg:PreventiveServiceTopic ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( akg:PreventiveServiceTopic akg:VersionedSubject ) ] ;
     rdfs:range biolink:Disease ;
     rdfs:label "about condition"@en .
+
+akg:aboutDrug a owl:ObjectProperty ;
+    rdfs:domain akg:VersionedSubject ;
+    rdfs:range biolink:Drug ;
+    rdfs:label "about drug"@en ;
+    obo:IAO_0000115 "The drug, as an RxNorm ingredient, whose label a chain of label versions describes."@en .
 
 akg:usesIntervention a owl:ObjectProperty ;
     rdfs:domain akg:PreventiveServiceTopic ;
@@ -221,6 +292,34 @@ akg:publishedOn a owl:DatatypeProperty , owl:FunctionalProperty ;
     skos:closeMatch prov:generatedAtTime ;
     rdfs:label "published on"@en ;
     obo:IAO_0000115 "Earliest public date of the version. It is both when the version starts to be in force (valid time) and when it can first be known (knowledge time)."@en .
+
+akg:effectiveFrom a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:Version ;
+    rdfs:range xsd:date ;
+    rdfs:label "effective from"@en ;
+    obo:IAO_0000115 "The day a version takes effect (valid time): for a drug label, the approval date of the labeling change; for a case definition, the start of the surveillance year it is used from."@en .
+
+akg:announcedOn a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:Version ;
+    rdfs:range xsd:date ;
+    rdfs:label "announced on"@en ;
+    obo:IAO_0000115 "The first day the public could know the version (knowledge time, public view). It may come before the version takes effect. A coarse source date is written as the last day it could be."@en .
+
+akg:notifiedOn a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:LabelVersion ;
+    rdfs:range xsd:date ;
+    rdfs:label "notified on"@en ;
+    obo:IAO_0000115 "The day the regulator notified the sponsor of a required safety labeling change (FDCA section 505(o)(4)). Knowledge time in the regulator and sponsor view; written only in sponsor-view snapshots."@en .
+
+akg:boxedWarningRisk a owl:DatatypeProperty ;
+    rdfs:domain akg:LabelVersion ;
+    rdfs:label "boxed warning risk"@en ;
+    obo:IAO_0000115 "A risk named in the label version's boxed warning."@en .
+
+akg:positionStatement a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:domain akg:CaseDefinitionVersion ;
+    rdfs:range xsd:string ;
+    rdfs:label "CSTE position statement"@en .
 
 akg:minAge a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:domain akg:Recommendation ;
