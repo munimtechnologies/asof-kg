@@ -4,8 +4,8 @@ import datetime as dt
 
 from .instants import as_date
 
-PREFIXES = """@prefix akg: <https://github.com/munimv2/asof-kg/ontology#> .
-@prefix akgd: <https://github.com/munimv2/asof-kg/data#> .
+PREFIXES = """@prefix akg: <https://github.com/munimtechnologies/asof-kg/ontology#> .
+@prefix akgd: <https://github.com/munimtechnologies/asof-kg/data#> .
 @prefix biolink: <https://w3id.org/biolink/vocab/> .
 @prefix MESH: <http://id.nlm.nih.gov/mesh/> .
 @prefix obo: <http://purl.obolibrary.org/obo/> .
